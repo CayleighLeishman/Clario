@@ -5,6 +5,7 @@ September 26 2025 | Cayleigh Leishman
 This guide outlines the mandatory folder structure and naming conventions for implementing role-based routing (Client and Transcriber) in Clario.
 
 ***  I. FOLDER STRUCTURE (Copy this structure into src/routes)  ***
+
 src/routes/
 ├── (public)/         <-- Group folder: URLs are used, but layout inheritance is broken.
 │   ├── +page.svelte  <-- Renders the Homepage (URL: /)
