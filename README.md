@@ -1,24 +1,38 @@
-# Clario
+# sv
 
-**Clario** is a web-based platform that provides **real-time transcription support**, connecting Deaf and Hard of Hearing individuals with trained transcribers. The platform emphasizes **privacy, accessibility, and ease of use**, allowing clients to securely access live transcripts without storing sensitive chat data permanently.
+Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
 
-## Project Goal
+## Creating a project
 
-Clario is designed for **both Deaf/Hard of Hearing users and transcribers**, giving them the **hands-on experience** they’re looking for in real-time transcription. The platform allows users to practice, interact, and improve communication skills while participating in accessible digital conversations.
+If you're seeing this, you've probably already done this step. Congrats!
 
-## Key Features
+```sh
+# create a new project in the current directory
+npx sv create
 
-- **Real-time text transcription** for meetings, classes, or conversations  
-- **Audio support** to follow live conversations  
-- **Secure user authentication** and role-based access (client, transcriber)  
-- **Multiple concurrent sessions** with reliable session routing  
-- **Note-taking** capabilities to save and organize important information  
-- **Accessible design** following best practices  
+# create a new project in my-app
+npx sv create my-app
+```
 
-## Tech Stack
+## Developing
 
-- **Front-end:** [SvelteKit](https://kit.svelte.dev/)  
-- **Back-end / Database:** [Supabase](https://supabase.com/)  
+Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
 
-**Note:** Clario is currently **in development** as a **BYU–Idaho senior project**. Features may change as the project progresses.
+```sh
+npm run dev
 
+# or start the server and open the app in a new browser tab
+npm run dev -- --open
+```
+
+## Building
+
+To create a production version of your app:
+
+```sh
+npm run build
+```
+
+You can preview the production build with `npm run preview`.
+
+> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
