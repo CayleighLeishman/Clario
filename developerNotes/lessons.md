@@ -6,33 +6,43 @@ This guide outlines the mandatory folder structure and naming conventions for im
 
 ***  I. FOLDER STRUCTURE (Copy this structure into src/routes)  ***
 
+File organization suggestion 
 src/routes/
-├── (public)/         <-- Group folder: URLs are used, but layout inheritance is broken.
-│   ├── +page.svelte  <-- Renders the Homepage (URL: /)
+├── (public)/                 # Grouped routes for marketing/auth (optional grouping)
+│   ├── +page.svelte          # Home page (/) - for logged-out users
 │   ├── login/
-│   │   └── +page.svelte  <-- Login Page (URL: /login)
+│   │   └── +page.svelte      # Login page (/login)
 │   └── register/
-│       └── +page.svelte  <-- Registration Page (URL: /register)
+│       └── +page.svelte      # Registration page (/register)
 │
-├── client/           <-- Root for all Client-only routes
-│   ├── +layout.svelte      <-- Renders the Client-specific sidebar/menu UI
-│   ├── +layout.server.ts   <-- CRUCIAL: Security check for role === 'client'
+├── client/                   # Top-level folder for ALL client-only routes
+│   ├── +layout.svelte        # Client UI: Sidebar, logo, etc.
+│   ├── +layout.server.ts     # Client Security: Checks if role === 'client'
 │   │
-│   ├── +page.svelte        <-- Client Dashboard (URL: /client)
+│   ├── +page.svelte          # Client Dashboard (/client)
 │   │
-│   └── projects/
+│   ├── projects/             # Client Project Management
+│   │   ├── +page.svelte      # List of all client's projects (/client/projects)
+│   │   └── [id]/
+│   │       └── +page.svelte  # View specific project details (/client/projects/123)
+│   │
+│   └── settings/
+│       └── +page.svelte      # Client profile and notification settings
+│
+├── transcriber/              # Top-level folder for ALL transcriber-only routes
+│   ├── +layout.svelte        # Transcriber UI: Sidebar, task list view, etc.
+│   ├── +layout.server.ts     # Transcriber Security: Checks if role === 'transcriber'
+│   │
+│   ├── +page.svelte          # Transcriber Dashboard (Assigned/Available Tasks)
+│   │
+│   └── task/
 │       └── [id]/
-│           └── +page.svelte  <-- Specific Project View (URL: /client/projects/123)
+│           └── +page.svelte  # Real-Time Transcription Editor (/transcriber/task/456)
 │
-└── transcriber/      <-- Root for all Transcriber-only routes
-├── +layout.svelte      <-- Renders the Transcriber-specific UI
-├── +layout.server.ts   <-- CRUCIAL: Security check for role === 'transcriber'
-│
-├── +page.svelte        <-- Transcriber Dashboard/Task List (URL: /transcriber)
-│
-└── task/
-└── [id]/
-└── +page.svelte  <-- Real-Time Transcription Editor (URL: /transcriber/task/456)
+└── settings/                 # Common settings (e.g., password change, general account)
+   └── +page.svelte          # Settings page (/settings)
+
+
 
 *** II. MANDATORY NAMING CONVENTIONS ***
 You must use these exact filenames for SvelteKit to recognize them:
