@@ -65,4 +65,15 @@ This whole security deep dive will be crucial for implementing the login and use
 - **Version Control:** Git (with GitHub for remote repository)
 
 ##6. Video'sand tutorials I followed in this project 
+
+<!--SvelteKit Authentication with Supabase -->
 https://www.youtube.com/watch?v=lSm0GNnh-0I&t=9s
+.96+
+
+<!-- what are relational Databases -->
+https://www.youtube.com/watch?v=OqjJjpjDRLc
+
+<!-- How to Normalize a Database -->
+https://www.youtube.com/watch?v=siiYInWniFs
+
+
