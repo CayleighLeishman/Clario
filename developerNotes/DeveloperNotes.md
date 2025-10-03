@@ -64,16 +64,82 @@ This whole security deep dive will be crucial for implementing the login and use
 - **Dependencies:** See `package.json` for a full list of dependencies.
 - **Version Control:** Git (with GitHub for remote repository)
 
-##6. Video'sand tutorials I followed in this project 
+## 6.tutorials I followed for this project. 
+
+<!--Accessibility for Teams: Front-End Development -->
+[digital.gov](https://digital.gov/guides/accessibility-for-teams/front-end-development)
 
 <!--SvelteKit Authentication with Supabase -->
-https://www.youtube.com/watch?v=lSm0GNnh-0I&t=9s
-.96+
+[SvelteKit Authentication with Supabase](https://www.youtube.com/watch?v=lSm0GNnh-0I&t=9s.96+)
 
+<!-- chatgbt -->
+[chatgbt](https://chat.openai.com/)
+
+<!-- gemini -->
+[Gemini](https://gemini.google.com/)
+
+<!-- Supabase Document -->
+[Supabase Docs](https://supabase.com/docs)
+
+<!-- W3schools for coding tutorials -->
+[w3schools](https://www.w3schools.com/)
+
+<!-- Microsoft Edge Accessibility tips -->
+[Microsoft Edge Accessibility](https://learn.microsoft.com/en-us/microsoft-edge/accessibility/design)
+
+[Front-End Frameworks: Evaluating Accessibility - University of Michigan](https://accessibility.umich.edu/how-to/design-development/front-end-frameworks)
+
+
+[ada.gov](https://www.ada.gov/resources/web-guidance/)
+
+## 7. Readings or Books I utilized for this Project
+
+
+**Acessibility**
+
+[Introduction to Web Accessibility - W3.org](https://www.w3.org/WAI/fundamentals/accessibility-intro/)
+[Different Types of Adaptive Switches for Individuals With Disabilities - Enabling Devices](https://enablingdevices.com/blog/different-types-of-adaptive-switches-for-individuals-with-disabilities/?srsltid=AfmBOor0bOoZn6GwoxEsx7uM7GWnH0X744uKdV2Uo7soqo6LuFXHs421)
+
+
+[Ways to Improve Web Accessibility - Acquia](https://www.acquia.com/blog/ways-to-improve-web-accessibility)
+
+[Accessibility for Teams: Front-End Development - digital.gov](https://digital.gov/guides/accessibility-for-teams/front-end-development/)
+
+[Video Introduction to Web Accessibility and W3C Standards](https://www.w3.org/WAI/videos/standards-and-benefits/)
+
+[WebAIM - Web Accessibility in Mind](https://webaim.org/projects/million/)
+
+[MDN ARIA](https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-label)
+
+[Accessibility Canada](https://accessibilitycanada.ca/wp-content/uploads/2018/10/AccessAbility-Handbook-on-Acc.-Web-Design.pdf)
+
+[ARIA Read this First](https://www.w3.org/WAI/ARIA/apg/patterns/)
+
+[w3.org ARIA Read this First (with Code)](https://www.w3.org/WAI/ARIA/apg/practices/read-me-first/)
+
+
+[MDN Prefers Contrast](https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-contrast)
+
+**Database**
 <!-- what are relational Databases -->
-https://www.youtube.com/watch?v=OqjJjpjDRLc
+[What Are Relational Databases- Youtube](https://www.youtube.com/watch?v=OqjJjpjDRLc)
 
 <!-- How to Normalize a Database -->
-https://www.youtube.com/watch?v=siiYInWniFs
+[How to Normalize a database - Youtube](https://www.youtube.com/watch?v=siiYInWniFs)
+
+<!-- The Magna Guide to databases-->
+[The Manga Guide to Databases](https://oberstar.eu.org/share/Documents/The-Manga-guide-to-databases.pdf)
+
+**Design**
+[The Design of Everyday Things - Don Norman](https://jnd.org/books/the-design-of-everyday-things-revised-and-expanded-edition/)
 
 
+**Security**
+
+[Penetration Testing - Georgia Weidman](https://www.kea.nu/files/textbooks/humblesec/penetrationtesting.pdf)
+
+
+[Web Security For Developers - Malcom Mcdonalsd](https://www.kea.nu/files/textbooks/humblesec/websecurityfordevelopers.pdf)
+
+
+***More Will be Added as I find More Resources | Cayleigh Leishman | October 2025***
