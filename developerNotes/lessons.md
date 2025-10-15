@@ -397,3 +397,134 @@ export const load = async ({ cookies }) => {
 
 
 ```
+### October 13  2025 | Ghost Bug / Invisible Character (BOM) in CSS
+
+I ran into the weirdest error in my `settings-popup.css` file. The code looked completely fine, but Visual Studio Code kept showing errors like this:
+
+```bash
+[{
+  "resource": "/c:/Users/cayle/Documents/byui/senior-proj/Clario/Clario/src/lib/styles/settings-popup.css",
+  "owner": "_generated_diagnostic_collection_name_#6",
+  "code": "expected_token",
+  "severity": 8,
+  "message": "Expected token }\nhttps://svelte.dev/e/expected_token",
+  "source": "svelte",
+  "startLineNumber": 3,
+  "startColumn": 11,
+  "endLineNumber": 3,
+  "endColumn": 11,
+  "origin": "extHost1"
+}]
+```
+
+Even though the code was correct:
+
+```css
+/* Overlay behind the modal */
+.settings-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  z-index: 50;
+}
+/*Modal container */
+.settings-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;        /* default background color */
+  color: #000000;           /* default text color */
+  padding: 2rem;
+  border-radius: 8px;
+  width: 300px;
+  z-index: 100;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+/* Labels and inputs spacing */
+.settings-modal label {
+  display: block;
+  margin-bottom: 0.75rem;
+  font-weight: 500;
+}
+
+/* Buttons container */
+.settings-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1rem;
+}
+
+/* Buttons */
+.settings-buttons button {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+}
+
+/* Save button */
+.settings-buttons button:first-child {
+  background-color: #1d4ed8; /* blue */
+  color: white;
+}
+
+.settings-buttons button:first-child:hover {
+  background-color: #2563eb;
+}
+
+/* Close button */
+.settings-buttons button:last-child {
+  background-color: #e5e7eb; /* gray */
+  color: #111827;
+}
+
+.settings-buttons button:last-child:hover {
+  background-color: #d1d5db;
+}
+```
+
+The fix was surprisingly simple: cut all the text out, close Visual Studio Code, then paste it back. No more errors!
+
+This was caused by an **invisible character error**, often called a **Byte Order Mark (BOM)**.
+
+**What’s a BOM?**
+A **Byte Order Mark (BOM)** is an invisible character at the very start of a text file that tells the computer the file’s encoding (like UTF-8). Sometimes, CSS or JS parsers don’t expect it, which can create mysterious errors even if the code looks correct.
+
+Here's a rough summary of what I did: 
+ focused on improving the front-end of Clario’s login page and settings modal. I moved the inline styles into separate CSS files to make the code cleaner and easier to maintain. I also connected all the colors and elements to the global theme variables so that the pages would consistently follow our light and dark mode design.
+
+I set up the login buttons to properly navigate users to the client and transcriber dashboards, making the login flow functional. I also updated the modals and buttons to fully respect the dark mode overrides, ensuring the interface looks good and remains readable in both light and dark themes.
+
+Overall, it was a productive day of refactoring, theming, and improving user experience. I'll put more focus on the role based design now. 
+
+### October 14 2025 | Caches and memory
+
+Imagine you’re writing a story, and someone tries to take away your notebook before you’ve finished writing the page.
+
+That’s kind of what happened in my Clario project. SvelteKit (the “reader”) tried to look at the data (data.session) before the “writer” — my server file (+layout.server.ts) — was done creating it.
+
+At first, there was no page at all — the +layout.server.ts file didn’t exist — so SvelteKit (the reader) only saw a blank page ({}) and said, “Hey, I can’t find session here!”
+
+I didn’t realize I needed a +layout.server.ts file for both the public and client folders. Once I added one for the public side, the logic was sound (confirmed by both ChatGPT and Gemini), even though the site didn’t fix itself right away.
+
+The problem was that the public section didn’t have its own writer yet, so the reader (SvelteKit) just saw a blank page. After adding the missing writer, both the public and client notebooks finally had someone writing in them — but the reader was still looking at the old notebook.
+
+That old copy was stored in something called a cache, which keeps old data around to load things faster. So even though the new page was written, the reader kept checking the wrong notebook.
+
+To fix it, I had to:
+
+Throw away the old notebooks (delete the .svelte-kit and .vite folders),
+
+Ask the reader to take a brand-new picture (rebuild the project), and
+
+Restart my text editor (to clear its memory).
+
+Once I did that, the reader finally looked at the new, updated page — and everything made sense again.
+
+Reflection:
+Today reminded me how sometimes the problem isn’t with the logic itself, but with how the system remembers old information. Even when the story is written correctly, you might just need to remind the reader to grab the latest draft.

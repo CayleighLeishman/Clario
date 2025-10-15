@@ -1,0 +1,59 @@
+/* Login page */
+.login-page {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  color: var(--color-text-light);
+}
+
+/* Login card */
+.login-card {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* Buttons */
+.client-button {
+  background: var(--color-primary);
+  color: var(--color-text-light);
+}
+
+.client-button:hover {
+  background: var(--color-primary-hover);
+}
+
+.transcriber-button {
+  background: var(--color-secondary);
+  color: var(--color-text-light);
+}
+
+.transcriber-button:hover {
+  background: var(--color-secondary-hover);
+}
+
+/* Modal */
+.settings-modal {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.settings-buttons button:first-child {
+  background: var(--color-primary);
+  color: var(--color-text-light);
+}
+
+.settings-buttons button:first-child:hover {
+  background: var(--color-primary-hover);
+}
+
+.settings-buttons button:last-child {
+  background: var(--color-bg-alt);
+  color: var(--color-text);
+}
+
+.settings-buttons button:last-child:hover {
+  background: var(--color-secondary-hover);
+}
+
+/* Overlay */
+.settings-overlay {
+  background: var(--color-overlay);
+}

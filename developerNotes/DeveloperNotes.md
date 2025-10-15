@@ -95,16 +95,108 @@ static/ – Stores files that don’t change, like pictures or icons.
 
 ## 2. Recent Updates and Changes Log
 
-**2025-09-26 | Dependency Oopsie and Quick Fix**  
+**Sept 26 2025 | Dependency Oopsie and Quick Fix**  
 - **What I did:** Installed a new package/library.  
 - **What went wrong:** It immediately broke everything! I ran into an unexpected dependency conflict that basically killed the app.  
 - **Fix:** I uninstalled that thing right away to get the project back to a stable place.  
 *(Note to self: Seriously vet dependencies before committing them. No more jumping the gun.)*
 
+**October 15 2025 |Note**
+
+I just wanted to put in here that I was dealing with errors and forgot to write changed updates. What I do know is different is tat I didnt have a home page. It dosen't have any styling yet, but it is there. throughout the process I had a lot of errors with supabase and typescript. I have written more about them in the "#.3 Error Handling And Known Issues" section below. 
+
+
 ---
 
 ## 3. Error Handling and Known Issues
+**October 15 2025 | VS Code Untrusted Publisher Warning**
+VS Code prompted:
+```cmd
+File ...\shellIntegration.ps1 is published by CN=Microsoft Corporation ... and is not trusted on your system.
+Only run scripts from trusted publishers.
+[V] Never run  [D] Do not run  [R] Run once  [A] Always run
+```
 
+Cause: This is the PowerShell integration script that VS Code installs automatically for terminal enhancements. It is signed by Microsoft and safe.
+
+Fix / Lesson Learned:
+
+Choosing A — Always run allows VS Code to trust the script, preventing future prompts.
+
+If uncomfortable, R — Run once works.
+
+Verified that VS Code was installed from the official source. This does not give Microsoft control of the system — it just enables terminal features.
+
+**October 15 2025 | Supabase Registration Call Error**
+TypeScript showed:
+```cmd
+This expression is not callable. Type 'SupabaseClient<…>' has no call signatures.
+```
+
+Cause: The Supabase client object was being called like a function: supabaseUser().auth.signUp(...).
+
+Fix: Remove the parentheses; the correct usage is:
+
+supabaseUser.auth.signUp(...)
+
+
+**October 15 2025 | Supabase User / Server Client Confusion**
+I wasn’t sure whether to import supabaseUser (browser client) or SupabaseServer (server client) in the header.
+
+Fix / Lesson Learned:
+
+For browser-only actions (login/logout), import supabaseUser.
+
+For server-side logic (SSR, cookies), use SupabaseServer.
+
+Important distinction: header buttons like logout run only in the browser, so supabaseUser is correct.
+
+**October 15 2025 | Supabase File Casing / Duplicate Import**
+TypeScript complained:
+
+File name 'SupabaseUser.ts' differs from already included file name 'supabaseUser.ts' only in casing
+
+
+Cause: Some imports used $lib/SupabaseUser (capital S) and others $lib/supabaseUser (lowercase s).
+
+Fix:
+
+Standardized the file name and all imports to lowercase (supabaseUser.ts).
+
+Restarted VS Code; the errors cleared.
+
+**October 15 2025 | Relative Import Instead of $lib**
+Some imports used relative paths like ../lib/file instead of the SvelteKit alias $lib/file.
+
+Fix / Lesson Learned:
+
+Replaced all ../lib/... imports with $lib/... to avoid errors when files move or the folder structure changes.
+
+$lib ensures consistent, project-wide paths.
+
+**October 15 2025 | Homepage Not Showing / Cache Issue**
+
+After fixing Supabase imports, the homepage was still blank.
+
+Cause: Old cached versions of .svelte-kit and .vite folders caused the page to not reflect updated imports and fixes.
+
+Fix:
+
+Deleted .svelte-kit and .vite folders.
+
+Restarted VS Code and rebuilt the project.
+
+The homepage finally loaded correctly.
+
+**october 14 2025 | Old Cache Issues**
+In my Clario project, SvelteKit (the “reader”) tried to access data.session before the “writer” — the +layout.server.ts file — had finished creating it. I hadn’t realized I needed that file in both the public and client folders, so the reader saw a blank page.
+
+Fix: I added the missing file, and the logic was correct (confirmed by ChatGPT and Gemini), but SvelteKit was still looking at an old cached version. Deleting the .svelte-kit and .vite folders, rebuilding, and restarting my editor cleared the cache and fixed the issue. I was worried I’d have to reinstall packages and delete dependencies, but Gemini assured me it was just a Type Resolution Failure — clearing the cache and restarting Visual Studio Code was enough. Lesson Learned! It was a good reminder that sometimes the problem isn’t the logic — it’s leftover memory. 
+
+
+**October 13 2025 |Ghost Bug / BOM**
+
+I learned that Sometimes VS Code shows errors in CSS/JS even when the code is correct. This can be caused by a **Byte Order Mark (BOM)**—an invisible character at the start of a file that tells the computer the file’s encoding. Cutting the code out the file (ctrl+c) closing Visual Studio Code and opening it again got rid of the error. 
 
 **October 08 2025 | Database errors**
 First error was 

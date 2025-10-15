@@ -1,0 +1,48 @@
+/* Styles for src/routes/(public) */
+
+main {
+  font-family: system-ui, sans-serif;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+}
+
+section {
+  text-align: center;
+}
+
+h1 {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+  color: #1f2937; /* dark gray */
+}
+
+h2 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  color: #1f2937;
+}
+
+p {
+  font-size: 1.125rem;
+  color: #4b5563; /* medium gray */
+  line-height: 1.6;
+}
+
+a {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.75rem 1.5rem;
+  background-color: #3b82f6; /* blue */
+  color: white;
+  text-decoration: none; /* fixed here */
+  border-radius: 0.5rem;
+  transition: background-color 0.2s ease-in-out;
+}
+
+a:hover {
+  background-color: #2563eb; /* darker blue on hover */
+}

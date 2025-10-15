@@ -1,0 +1,67 @@
+/* Overlay behind the modal */
+.settings-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5); /* overlay can stay semi-transparent black */
+  z-index: 50;
+}
+
+/* Modal container */
+.settings-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--color-bg);    /* use theme background */
+  color: var(--color-text);       /* use theme text color */
+  padding: 2rem;
+  border-radius: var(--radius);
+  width: 300px;
+  z-index: 100;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+/* Labels and inputs spacing */
+.settings-modal label {
+  display: block;
+  margin-bottom: 0.75rem;
+  font-weight: 500;
+}
+
+/* Buttons container */
+.settings-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1rem;
+}
+
+/* Buttons */
+.settings-buttons button {
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+}
+
+/* Save button */
+.settings-buttons button:first-child {
+  background-color: var(--color-primary); /* primary theme color */
+  color: var(--color-bg);                 /* white text from theme */
+}
+
+.settings-buttons button:first-child:hover {
+  background-color: #2563eb; /* can also define a --color-primary-hover in global.css if you want */
+}
+
+/* Close button */
+.settings-buttons button:last-child {
+  background-color: var(--color-bg-alt);  /* secondary/light background from theme */
+  color: var(--color-text);               /* dark text from theme */
+}
+
+.settings-buttons button:last-child:hover {
+  background-color: #d1d5db; /* can define a --color-bg-alt-hover for consistency */
+}

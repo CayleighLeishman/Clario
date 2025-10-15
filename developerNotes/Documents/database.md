@@ -336,3 +336,28 @@ CREATE TABLE final_transcriptions (
     final_duration_minutes INT NOT NULL,
     completed_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+```
+### creating a table to let users change profile backgrounds | October 13, 2025
+```SQL
+-- Table to store multiple color profiles per user
+create table user_settings (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) not null,
+  profile_name text not null,          -- e.g., 'Default', 'MyColors'
+  is_active boolean default false,     -- which profile is applied
+  text_color text default '#000000',   -- user-selected text
+  background text default '#ffffff',   -- user-selected background
+  button_color text default '#1d4ed8', -- user-selected button color
+  notifications boolean default true,
+  created_at timestamp with time zone default now(),
+  updated_at timestamp with time zone default now()
+);
+
+-- Ensure one active profile per user
+create unique index unique_active_profile_per_user on user_settings(user_id) where is_active;
+
+-- Ensure unique profile names per user
+create unique index unique_user_profile on user_settings(user_id, profile_name);
+
+``` 

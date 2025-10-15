@@ -4,32 +4,37 @@
       Root Theme Variables
    ============================= */
 :root {
-    /*  Color Palette */
-    --color-bg: #ffffff;
-    --color-bg-alt: #f5f7fa;
-    --color-text: #1a1a1a;
-    --color-primary: #4b9cff;
-    --color-secondary: #e0e7ff;
-    --color-accent: #ffb703;
-    --color-border: #dcdcdc;
-    --color-success: #38a169;
-    --color-error: #e53e3e;
+  /*  Main Colors */
+  --color-bg: #ffffff;             /* Card / page background */
+  --color-bg-alt: #f5f7fa;         /* Secondary background / modal close button */
+  --color-text: #1a1a1a;           /* Primary text */
+  --color-text-light: #ffffff;     /* Light text (on dark backgrounds) */
 
-    /* dark mode */
-    /* to do: dark mode colors */
+  --color-primary: #4b9cff;        /* Primary brand / buttons / titles */
+  --color-primary-hover: #2563eb;  /* Hover for primary buttons */
+  --color-secondary: #e0e7ff;      /* Secondary buttons / backgrounds */
+  --color-secondary-hover: #d1d5db;/* Hover for secondary buttons */
 
-    /* Typography */
-    --font-family: 'Inter', system-ui, sans-serif;
-    --font-size-base: 16px;
-    --font-size-heading: 1.5rem;
+  --color-accent: #ffb703;         /* Accent / highlights */
+  --color-border: #dcdcdc;         /* Borders / dividers */
+  --color-success: #38a169;        /* Success states */
+  --color-error: #e53e3e;          /* Error states */
 
-    /*  Spacing & Layout */
-    --radius: 0.5rem;
-    --padding: 1rem;
-    --gap: 1rem;
+  /* Overlay */
+  --color-overlay: rgba(0, 0, 0, 0.5); /* Modal overlay */
 
-    /* 🌙 Theme Support */
-    color-scheme: light dark;
+  /* Typography */
+  --font-family: 'Inter', system-ui, sans-serif;
+  --font-size-base: 16px;
+  --font-size-heading: 1.5rem;
+
+  /* Spacing & Layout */
+  --radius: 0.5rem;
+  --padding: 1rem;
+  --gap: 1rem;
+
+  /* Theme support */
+  color-scheme: light dark;
 }
 
 /* =============================

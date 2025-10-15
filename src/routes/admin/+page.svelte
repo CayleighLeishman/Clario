@@ -34,8 +34,11 @@
     <div>Active Sessions: 1</div>
 
     <div style="margin-top:1rem;">
-      <label>Join Session:</label>
-      <input type="text" bind:value={joinSessionCode} placeholder="Enter session code" />
+     <label>
+  Join Session:
+  <input type="text" bind:value={joinSessionCode} placeholder="Enter session code" />
+  </label>
+
     </div>
   </div>
 

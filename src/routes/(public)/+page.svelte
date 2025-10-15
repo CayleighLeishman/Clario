@@ -1,4 +1,10 @@
 <!-- This page is the home page for logged out Users -->
+<script lang="ts">
+  import '$lib/styles/public.css';
+
+  let showMenu = false;
+</script>
+
 <main>
   <section>
     <h1>Welcome to Clario</h1>
