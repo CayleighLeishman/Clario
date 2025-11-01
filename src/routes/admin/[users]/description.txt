@@ -1,2 +1,0 @@
-This users file is for admin to control and see all their users 
-

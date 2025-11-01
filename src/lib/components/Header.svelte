@@ -1,3 +1,6 @@
+
+<!-- this is for the header where I maintain header logic (session, logout, and role-based links) -->
+ <!-- for responsiveness see "src/lib/components/responsiveNav" -->
 <script lang="ts">
 
     // === SVELTEKIT CORE TOOLS ===
@@ -42,7 +45,6 @@
         await supabaseUser.auth.signOut();
 
         goto('/login'); 
-
     }
 
     // Dynamically loads the Settings component ONLY when the button is clicked.
@@ -60,19 +62,14 @@
 
 </script>
 
-
-
 <header class="app-header">
     <!-- Left: Logo linked to home or dashboard -->
     <a href={session ? "/client/dashboard" : "/"} class="logo-link">
         <img src={logo} alt="Clario Logo" class="logo" />
     </a>
 
-
-
     <!-- Center of header: Platform name-->
     <h1 class="title">Clario</h1>
-
 
     <!-- Right of Header: Role-based navigation links and utilities -->
     <nav class="nav-links">
@@ -99,18 +96,14 @@
 
         {/if}
 
-
-
         <!-- === LOGIN / LOGOUT LINKS === -->
 
         {#if session}
             <button on:click={signOut} class="signout-btn">Sign Out</button>
         {:else}
             <a href="/login">Login</a>
-            <a href="/signup">Sign Up</a>
+            <a href="/register">Sign Up</a>
         {/if}
-
-
 
         <!-- === UTILITY BUTTONS === -->
 

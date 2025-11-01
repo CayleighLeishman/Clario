@@ -528,3 +528,75 @@ Once I did that, the reader finally looked at the new, updated page — and ever
 
 Reflection:
 Today reminded me how sometimes the problem isn’t with the logic itself, but with how the system remembers old information. Even when the story is written correctly, you might just need to remind the reader to grab the latest draft.
+
+
+this is drivign me nuts, I keep getting a "Property 'SESSION" does not exist on type '{}' error. 
+
+According to chatgbt and gemini the code is correct, so I'm not really sure what else to try because I've already deleted the svelte-kit and .vite folders, restarted visual studio code. 
+
+the only thing i havent tried is restarting my project, but i feel like that's a bit overkill, and I don't think i need to redo everything. 
+
+
+
+### Oct 31 2025  | debugging env.dts file (login issue)
+
+
+#### **1️⃣ 500 Internal Server Error**
+
+* Happened when visiting the login page.
+* Cause: The code tried to check `event.locals.session` **before any session existed**.
+* Lesson: Don’t ask the server if someone is logged in until sessions actually exist.
+* Fix: Remove session checks for now. Just render the login form.
+
+---
+
+#### **2️⃣ Cannot find module '$env/static/public'**
+
+* Happened in `supabaseUser.ts`.
+* Cause: TypeScript couldn’t find the environment variables for Supabase.
+* Lesson: `$env/static/public` is where SvelteKit stores public `.env` values.
+* Fix: Make sure `.env` file exists with `PUBLIC_SUPABASE_URL` and `PUBLIC_SUPABASE_ANON_KEY`, and create `env.d.ts` so TypeScript knows about them.
+
+---
+
+#### **3️⃣ Cannot find module '$lib/supabaseUser'**
+
+* Happened in login page code.
+* Cause: The import path was wrong or file name didn’t match.
+* Lesson: Paths are important! Must match file names exactly.
+* Fix: Make sure the file is `src/lib/supabaseUser.ts` and the import is:
+
+```ts
+import { supabaseUser } from '$lib/supabaseUser';
+```
+
+---
+
+#### **4️⃣ Cannot redeclare block-scoped variable 'load'**
+
+* Happened in `+page.server.ts`.
+* Cause: Two `export const load` functions in the same file.
+* Lesson: Only **one `load`** function per page server file.
+* Fix: Merge duplicate load functions or delete extras.
+
+---
+
+#### **5️⃣ @typescript-eslint/no-empty-interface**
+
+* Happened in `app.d.ts`.
+* Cause: Created an interface with nothing in it. TypeScript thinks it’s weird.
+* Lesson: Empty boxes/interfaces can confuse TypeScript.
+* Fix: Add properties, or tell the linter to ignore it for now.
+
+---
+
+#### **Key Takeaways**
+
+* Always start with a simple login page **without session checks**.
+* Only after login succeeds, check roles and redirect.
+* Make sure all file paths and environment variables exist.
+* Avoid duplicate function declarations in the same file.
+
+
+
+

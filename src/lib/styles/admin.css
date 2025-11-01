@@ -1,0 +1,29 @@
+/* src/routes/admin/+page.svelte  */
+/* to do: ensure styles fit the layout as planned */
+.admin-container {
+  display: flex;
+  gap: 2rem; /* space between sidebar and main */
+  padding: 1rem 2rem;
+  min-height: calc(100vh - 120px); /* adjust for header/footer height */
+  box-sizing: border-box;
+  background-color: #f9f9f9;
+}
+
+/* Sidebar */
+.sidebar {
+  flex: 1;
+  background-color: #fff;
+  padding: 1rem;
+  border-radius: 10px;
+  box-shadow: 0 0 8px rgba(0,0,0,0.05);
+  min-width: 200px;
+}
+
+/* Main content */
+.main {
+  flex: 3;
+  background-color: #fff;
+  padding: 1rem;
+  border-radius: 10px;
+  box-shadow: 0 0 8px rgba(0,0,0,0.05);
+}
