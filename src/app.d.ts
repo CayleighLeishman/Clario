@@ -13,7 +13,7 @@ declare namespace App {
          */
         session: {
             userId: string;
-            role: 'student' | 'transcriber' | 'admin';
+            role: 'client' | 'transcriber' | 'admin';
             email: string;
         } | null;
     }

@@ -1,5 +1,5 @@
 import type { PageServerLoad } from './$types';
-import { createSupabaseServer } from '$lib/SupabaseServer';
+import { createSupabaseServer } from '$lib/utils/supabaseServer';
 // to do : ensue only admins can accessthis page 
 
 

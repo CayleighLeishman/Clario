@@ -1,81 +1,88 @@
-<!-- Registration Page for Clario -->
+<!-- src/routes/(public)/register/+page.svelte -->
 
 <script lang="ts">
-	// Import Supabase client and navigation helper from SvelteKit
-	import { supabaseUser } from '$lib/supabaseUser';
+	import { supabaseUser } from '$lib/utils/supabaseUser';
 	import { goto } from '$app/navigation';
 
-    // These Start 'empty' because we don’t know what the user will type yet. 
-    // We define it now so the computer can use it later without having to write it again.	let email = '';
-	let email: string = '';
-    let password = '';
+	let first_name = '';
+	let email = '';
+	let password = '';
 	let confirmPassword = '';
-
-	// Default is 'client' unless the user selects otherwise
 	let role: 'client' | 'transcriber' = 'client';
 
-	// Feedback messages for user
 	let errorMessage = '';
 	let successMessage = '';
 
-	// Function to handle signup process
 	async function handleSignup() {
-		// Reset any previous messages
 		errorMessage = '';
 		successMessage = '';
 
-		// Check if passwords match before continuing
 		if (password !== confirmPassword) {
 			errorMessage = 'Passwords do not match.';
 			return;
 		}
 
-		// Create a new user in Supabase and store their role in user_metadata
+		// 1) Create Supabase user with role stored in metadata
 		const { data, error } = await supabaseUser.auth.signUp({
-			email,  
+			email,
 			password,
 			options: {
-				data: { role } // This stores the user's role in Supabase under user_metadata.role that supabase controls
+				data: { role } // stored in user_metadata.role
 			}
 		});
 
-		// If Supabase returns an error, show it to the user
 		if (error) {
 			errorMessage = error.message;
 			return;
 		}
 
-		// On success, show message and redirect to login page after a delay
+		// If sign-up succeeded, create profile in DB
+		if (data.user) {
+			const { error: profileError } = await supabaseUser
+				.from('profiles')
+				.insert({
+					id: data.user.id,
+					first_name,
+					role
+				});
+
+			if (profileError) {
+				errorMessage = 'Account created, but profile failed to save.';
+				console.error(profileError);
+				return;
+			}
+		}
+
 		successMessage = 'Account created! Please check your email to confirm.';
-		setTimeout(() => goto('/login'), 3000);
+		setTimeout(() => goto('/login'), 2500);
 	}
 </script>
 
-<!-- Registration Form  -->
 <div class="signup-container">
 	<h1>Create a Clario Account</h1>
 	<p class="subtitle">Sign up to get started.</p>
 
 	<form on:submit|preventDefault={handleSignup} class="signup-form">
-		<!-- Put in Email -->
+		<label>
+			First Name
+			<input type="text" bind:value={first_name} required placeholder="Your name" />
+		</label>
+
 		<label>
 			Email
 			<input type="email" bind:value={email} required placeholder="your-email@domain.com" />
 		</label>
 
-		<!-- Put in Password -->
 		<label>
 			Password
-			<input type="password" bind:value={password} required placeholder="••••••••" />
+			<input type="password" bind:value={password} required />
 		</label>
 
-		<!-- Confirms the password -->
 		<label>
 			Confirm Password
-			<input type="password" bind:value={confirmPassword} required placeholder="••••••••" />
+			<input type="password" bind:value={confirmPassword} required />
 		</label>
 
-		<!-- Asks for their roles (client or transcriber) -->
 		<label>
 			Role
 			<select bind:value={role}>
@@ -84,10 +91,8 @@
 			</select>
 		</label>
 
-		<!-- Submit button to give database information it needs -->
 		<button type="submit" class="signup-btn">Sign Up</button>
 
-		<!-- this tells them if there's an error give an error message, if success give sucess message -->
 		{#if errorMessage}
 			<p class="error">{errorMessage}</p>
 		{/if}
@@ -96,9 +101,8 @@
 		{/if}
 	</form>
 
-	<!-- allows people to redirect if they click the wrong option -->
 	<p class="redirect">
 		Already have an account?
-		<a href="/login">Log in</a>
+		<a class="btn" href="/login">Log in</a>
 	</p>
 </div>

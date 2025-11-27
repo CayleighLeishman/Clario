@@ -1,25 +1,19 @@
 
-<!-- this is for the header where I maintain header logic (session, logout, and role-based links) -->
- <!-- for responsiveness see "src/lib/components/responsiveNav" -->
 <script lang="ts">
-
     // === SVELTEKIT CORE TOOLS ===
+    import { goto } from '$app/navigation';     // goto is for changing pages.
+    import { browser } from '$app/environment';     // browser tells us if the code is running in the user's web browser (true) or on the server (false).
 
-    // goto is for changing pages.
-    import { goto } from '$app/navigation';
-
-    // browser tells us if the code is running in the user's web browser (true) or on the server (false).
-    import { browser } from '$app/environment'; 
 
     // === LOCAL COMPONENTS & UTILITIES ===
-    import ThemeToggle from '$lib/components/ThemeToggle.svelte';
     import logo from '$lib/assets/favicon.svg'; 
 
     // === SUPABASE LOGIC ===
 
-    import { supabaseUser } from '$lib/supabaseUser';
-
+    import { supabaseUser } from '$lib/utils/supabaseUser';
     import type { Session } from '@supabase/supabase-js';
+
+    import '$lib/styles/public.css';
 
     // DO NOT import Settings here statically. We will load it later dynamically
 
@@ -68,6 +62,7 @@
         <img src={logo} alt="Clario Logo" class="logo" />
     </a>
 
+
     <!-- Center of header: Platform name-->
     <h1 class="title">Clario</h1>
 
@@ -77,19 +72,18 @@
             <!-- === ROLE-BASED LINKS (Client, Admin, Transcriber) === -->
 
             <!-- if client -->
-        {#if session?.user?.app_metadata?.role === 'client'}
+        {#if session?.user?.user_metadata?.role === 'client'}
 			<a href="/client/classnotes">Class Notes</a>
-            <a href="/client/sessions">All Sessions</a>
 			<a href= /client/dashboard>Dashboard</a>
 
             <!-- if admin -->
-        {:else if session?.user?.app_metadata?.role === 'admin'}
+        {:else if session?.user?.user_metadata?.role === 'admin'}
             <a href="/admin/dashboard">Dashboard</a>
             <!-- HERE IS THE 'MANAGE USERS' LINK -->
             <a href="/admin/users">Manage Users</a> 
 
             <!-- if transcriber -->
-        {:else if session?.user?.app_metadata?.role === 'transcriber'}
+        {:else if session?.user?.user_metadata?.role === 'transcriber'}
             <a href="/transcriber/tasks">My Tasks</a>
             <a href="/transcriber/history">History</a>
 			<a href="/transcriber/dashboard">Dashboard</a>
@@ -99,17 +93,17 @@
         <!-- === LOGIN / LOGOUT LINKS === -->
 
         {#if session}
-            <button on:click={signOut} class="signout-btn">Sign Out</button>
+            <button class="btn" on:click={signOut}>Sign Out</button>
         {:else}
-            <a href="/login">Login</a>
-            <a href="/register">Sign Up</a>
+            <a href="/login" class="btn" >Login</a>
+            <a href="/register" class="btn">Sign Up</a>
         {/if}
 
         <!-- === UTILITY BUTTONS === -->
 
         <!-- Calls the function that handles dynamic loading -->
-        <button on:click={openSettings}>Settings</button> 
-        <ThemeToggle />
+        <button class="btn" on:click={openSettings}>Settings</button> 
+      
 
         <!-- === DYNAMIC SETTINGS MODAL === -->
 

@@ -2,52 +2,54 @@ import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/publi
 import { createServerClient } from '@supabase/ssr';
 import type { LayoutServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
-// handles server side data and cheks for everything inside the layout 
 
 /* ==========================================================================
-    * This is the website's Security Checkpoint    
-    * This code runs on the web server before the page loads for the user.
-    * Its main job is to check if the user is currently logged in.
-   ========================================================================= */
+   SERVER-SIDE LAYOUT LOAD FUNCTION
+   This runs on the server before rendering client pages. It ensures the
+   user is authenticated, is a client, and has all required fields like email.
+========================================================================== */
 export const load: LayoutServerLoad = async ({ cookies }) => {
+  // 1. Create a Supabase client that works on the server.
+  //    It uses the user's cookies to authenticate the request.
+  const supabase = createServerClient(
+    PUBLIC_SUPABASE_URL,
+    PUBLIC_SUPABASE_ANON_KEY,
+    {
+      cookies: {
+        // Read a cookie value by key
+        get: (key) => cookies.get(key),
+        // Write/update a cookie value
+        set: (key, value, options) => cookies.set(key, value, { ...options, path: '/' }),
+        // Remove a cookie
+        remove: (key, options) => cookies.set(key, '', { ...options, path: '/' }),
+      },
+    }
+  );
 
-    // 1. Setting up the Checkpoint:
-    // this sets a secure connection to the database, we have this because it knows how to read 
-    // and write the secret user "tickets" (cookies) that show us they logged in
-    const supabase = createServerClient(
-        PUBLIC_SUPABASE_URL,
-        PUBLIC_SUPABASE_ANON_KEY,
-        {
-            cookies: {
-
-                // Read the ticket from the user's browser.
-                get: (key) => cookies.get(key),
-
-                // Write new/updated tickets back to the user's browser.
-                set: (key, value, options) => {
-                    cookies.set(key, value, { ...options, path: '/' });
-                },
-                // Delete old tickets when the user logs out.
-                remove: (key, options) => {
-                    cookies.set(key, '', { ...options, path: '/' });
-                },
-            },
-        }
-    );
-
-    // 2. Getting the Status: We ask the database, "Who is this user?"
-    // This retrieves the user's "session" (the proof they logged in).
-const {
+  // 2. Get the user's session from Supabase using the server client
+  const {
     data: { session },
-} = await supabase.auth.getSession();
+  } = await supabase.auth.getSession();
 
-    // 3. The redeinforcement: we check the user's "session" (login status) 
-    //  if they are not the client they go right back to the login page
-
-if (!session || session.user?.role !== 'client') {
+  // 3. Check if session exists and user role is 'client'
+  if (!session || session.user.user_metadata.role !== 'client') {
+    // Redirect to login if not authenticated or wrong role
     throw redirect(303, '/login');
-}
-    // 4. Reporting Back: we send the login status (the 'session') to the part of the code 
-    //that lets the website know what page to show (weither the "dashboard" or back to "log in" pg)
-    return { session };
+  }
+
+  // 4. Ensure email exists. TypeScript requires a definite string for 'email'.
+  if (!session.user.email) {
+    // Redirect if email is missing — prevents type errors
+    throw redirect(303, '/login');
+  }
+
+  // 5. Return only the data needed for client layout
+  //    This creates a simpler session object with the fields your Svelte components expect
+  return {
+    session: {
+      userId: session.user.id, // Supabase user ID
+      role: session.user.user_metadata.role, // Client, admin, or transcriber
+      email: session.user.email, // Guaranteed email
+    },
+  };
 };

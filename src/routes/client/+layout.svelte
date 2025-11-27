@@ -1,33 +1,25 @@
-<!-- Client UI: Sidebar, Logo, and so forth -->
+<!-- // src/routes/client/+layout.svelte -->
 <script lang="ts">
-	import favicon from '$lib/assets/favicon.svg'; 	//  to do: import your own favicon instead here
-	import { page } from '$app/stores';
+  import { page } from '$app/stores';
+	import Footer from '$lib/components/Footer.svelte';
+  import Header from '$lib/components/Header.svelte';
+  import "$lib/styles/dashboards.css";
 
-	// to do : import supabase authentication user and profile (double check if we need profile)
-    let session: any; //sessiion or profile? check
+  type ClientSession = {
+    userId: string;
+    role: 'client' | 'admin' | 'transcriber';
+    email: string;
+  };
 
-	// This gets the session data that was returned from the load function 
-    // in the server file (+layout.server.ts)
-	$: session = $page.data.session;
-	// console.log("session in layout", session);
+  let session: ClientSession | null = null;
 
-	// Note to Future Cayleigh:
-	// you dont need to declare "children" or use $props() here,
-	// because Sveltekit handles the rendering usign the code 
-	// "//</slot />" 
-	// which is like a placeholder for whatever page is inside the laayout
+  $: session = $page.data.session; // TS now knows this is ClientSession
 </script>
 
-	<!-- The Rendering -->
 {#if session}
-	<p>Logged in as **{session.user.email}**</p><!-- to do: check if "session.user.email"needs to be "profile.user.email" -->
-{:else}
-	<p>You are not logged in</p>
-	<!-- set route back to sign in page -->
+  <p class="greeting">Hello, {session.email}!</p>
 {/if}
 
-<svelte:head>
-	<link rel="icon" href={favicon} />
-</svelte:head>
-
 <slot />
+
+

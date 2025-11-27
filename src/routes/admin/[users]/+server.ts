@@ -5,7 +5,7 @@
 // Only admins should be able to call these!
 
 import type { RequestHandler } from '@sveltejs/kit';
-import { supabaseAdmin } from '$lib/supabaseServer';
+import { supabaseAdmin } from '$lib/utils/supabaseServer';
 
 // DELETES A USER
 export const DELETE: RequestHandler = async ({ request }) => {

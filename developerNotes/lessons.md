@@ -599,4 +599,333 @@ import { supabaseUser } from '$lib/supabaseUser';
 
 
 
+## November 11, 2025 | Finally recovering
 
+I’ve been sick and hospitalized twice. Now I’m finally getting back to the project.
+
+Most of the website is locked unless you’re logged in. I had rules to make sure only people with accounts could see the pages. But I forgot to tell the website that the login page is like a door that should always open. So the site kept saying, “Go to the door!” but the door wouldn’t open because it thought you needed a key to get in. That’s why people got stuck going to login over and over.
+
+Fix: I updated the code to make the login page a “public page,” so unauthenticated users can see it without being redirected.
+
+Original code causing the loop:
+
+if (!session && !publicPages.includes(url.pathname)) {
+  throw redirect(303, '/login');
+}
+
+
+Now it works correctly because the site knows the login page is safe for everyone.
+
+
+## November 14, 2025 | working on role-based routing and creating dashboard for client
+
+in supabase Using Supabase Dashboard I followed this instruction: 
+
+To run SQL commands (like creating policies):
+
+Go to SQL Editor → New Query. (oit's under "private" on the left side panel. I named the file "Row Level Securities + Policies for database Tables")
+
+# Thus us the sql I put in Rls + policies file
+
+for profiles table: 
+
+```sql
+-- ======================================
+-- Enable RLS on all tables
+-- ======================================
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE course_lectures ENABLE ROW LEVEL SECURITY;
+ALTER TABLE student_enrollments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE active_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE realtime_chunks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE final_transcriptions ENABLE ROW LEVEL SECURITY;
+
+-- ======================================
+--  Profiles table policies
+-- ======================================
+CREATE POLICY "Users can select own profile" 
+ON profiles FOR SELECT
+USING (id = auth.uid() OR is_admin);
+
+CREATE POLICY "Users can update own profile"
+ON profiles FOR UPDATE
+USING (id = auth.uid() OR is_admin);
+
+CREATE POLICY "Admins can insert profiles"
+ON profiles FOR INSERT
+USING (is_admin);
+
+CREATE POLICY "Admins can delete profiles"
+ON profiles FOR DELETE
+USING (is_admin);
+
+-- ======================================
+--  Course Lectures policies
+-- ======================================
+CREATE POLICY "Users can select lectures"
+ON course_lectures FOR SELECT
+USING (true);
+
+CREATE POLICY "Admins can manage lectures"
+ON course_lectures FOR ALL
+USING ((SELECT is_admin FROM profiles WHERE id = auth.uid()));
+
+-- ======================================
+--  Student Enrollments policies
+-- ======================================
+CREATE POLICY "Students can select own enrollment"
+ON student_enrollments FOR SELECT
+USING (student_id = auth.uid());
+
+CREATE POLICY "Students can insert own enrollment"
+ON student_enrollments FOR INSERT
+USING (student_id = auth.uid());
+
+CREATE POLICY "Admins can manage enrollments"
+ON student_enrollments FOR ALL
+USING ((SELECT is_admin FROM profiles WHERE id = auth.uid()));
+
+-- ======================================
+--  Active Sessions policies
+-- ======================================
+CREATE POLICY "Transcribers can select own sessions"
+ON active_sessions FOR SELECT
+USING (transcriber_id = auth.uid() OR (SELECT is_admin FROM profiles WHERE id = auth.uid()));
+
+CREATE POLICY "Transcribers can update own sessions"
+ON active_sessions FOR UPDATE
+USING (transcriber_id = auth.uid() OR (SELECT is_admin FROM profiles WHERE id = auth.uid()));
+
+CREATE POLICY "Admins can manage sessions"
+ON active_sessions FOR ALL
+USING ((SELECT is_admin FROM profiles WHERE id = auth.uid()));
+
+-- ======================================
+--  Realtime Chunks policies
+-- ======================================
+CREATE POLICY "Transcribers can insert chunks for own session"
+ON realtime_chunks FOR INSERT
+USING (session_id IN (
+  SELECT id FROM active_sessions WHERE transcriber_id = auth.uid()
+));
+
+CREATE POLICY "Transcribers can select chunks for own session"
+ON realtime_chunks FOR SELECT
+USING (session_id IN (
+  SELECT id FROM active_sessions WHERE transcriber_id = auth.uid()
+));
+
+CREATE POLICY "Admins can manage chunks"
+ON realtime_chunks FOR ALL
+USING ((SELECT is_admin FROM profiles WHERE id = auth.uid()));
+
+-- ======================================
+--  Final Transcriptions policies
+-- ======================================
+CREATE POLICY "Admins can manage final transcriptions"
+ON final_transcriptions FOR ALL
+USING ((SELECT is_admin FROM profiles WHERE id = auth.uid()));
+
+CREATE POLICY "Users can select final transcriptions"
+ON final_transcriptions FOR SELECT
+USING (true);
+
+
+```
+errors i got 
+
+```sql
+Error: Failed to run sql query: ERROR: 42601: only WITH CHECK expression allowed for INSERT
+```
+
+this error occurs because the 'using' clause is not allowed for insert policies in postgresql instead I should have used with "check" clause for insert policiies 
+
+so i changed it to 
+
+``sql 
+-- ======================================
+-- 1️⃣ Enable RLS on all tables
+-- ======================================
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE course_lectures ENABLE ROW LEVEL SECURITY;
+ALTER TABLE student_enrollments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE active_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE realtime_chunks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE final_transcriptions ENABLE ROW LEVEL SECURITY;
+
+-- ======================================
+-- 2️⃣ Profiles table policies
+-- ======================================
+CREATE POLICY "Users can select own profile" 
+ON profiles FOR SELECT
+USING (id = auth.uid() OR is_admin);
+
+CREATE POLICY "Users can update own profile"
+ON profiles FOR UPDATE
+USING (id = auth.uid() OR is_admin)
+WITH CHECK (id = auth.uid() OR is_admin);
+
+CREATE POLICY "Admins can insert profiles"
+ON profiles FOR INSERT
+WITH CHECK (is_admin);
+
+CREATE POLICY "Admins can delete profiles"
+ON profiles FOR DELETE
+USING (is_admin);
+
+-- ======================================
+-- 3️⃣ Course Lectures policies
+-- ======================================
+CREATE POLICY "Users can select lectures"
+ON course_lectures FOR SELECT
+USING (true);
+
+CREATE POLICY "Admins can manage lectures"
+ON course_lectures FOR ALL
+USING ((SELECT is_admin FROM profiles WHERE id = auth.uid()));
+
+-- ======================================
+-- 4️⃣ Student Enrollments policies
+-- ======================================
+CREATE POLICY "Students can select own enrollment"
+ON student_enrollments FOR SELECT
+USING (student_id = auth.uid());
+
+CREATE POLICY "Students can insert own enrollment"
+ON student_enrollments FOR INSERT
+WITH CHECK (student_id = auth.uid());
+
+CREATE POLICY "Admins can manage enrollments"
+ON student_enrollments FOR ALL
+USING ((SELECT is_admin FROM profiles WHERE id = auth.uid()));
+
+-- ======================================
+-- 5️⃣ Active Sessions policies
+-- ======================================
+CREATE POLICY "Transcribers can select own sessions"
+ON active_sessions FOR SELECT
+USING (transcriber_id = auth.uid() OR (SELECT is_admin FROM profiles WHERE id = auth.uid()));
+
+CREATE POLICY "Transcribers can update own sessions"
+ON active_sessions FOR UPDATE
+USING (transcriber_id = auth.uid() OR (SELECT is_admin FROM profiles WHERE id = auth.uid()))
+WITH CHECK (transcriber_id = auth.uid() OR (SELECT is_admin FROM profiles WHERE id = auth.uid()));
+
+CREATE POLICY "Admins can manage sessions"
+ON active_sessions FOR ALL
+USING ((SELECT is_admin FROM profiles WHERE id = auth.uid()));
+
+-- ======================================
+-- 6️⃣ Realtime Chunks policies
+-- ======================================
+CREATE POLICY "Transcribers can insert chunks for own session"
+ON realtime_chunks FOR INSERT
+WITH CHECK (session_id IN (
+  SELECT id FROM active_sessions WHERE transcriber_id = auth.uid()
+));
+
+CREATE POLICY "Transcribers can select chunks for own session"
+ON realtime_chunks FOR SELECT
+USING (session_id IN (
+  SELECT id FROM active_sessions WHERE transcriber_id = auth.uid()
+));
+
+CREATE POLICY "Admins can manage chunks"
+ON realtime_chunks FOR ALL
+USING ((SELECT is_admin FROM profiles WHERE id = auth.uid()));
+
+-- ======================================
+-- 7️⃣ Final Transcriptions policies
+-- ======================================
+CREATE POLICY "Admins can manage final transcriptions"
+ON final_transcriptions FOR ALL
+USING ((SELECT is_admin FROM profiles WHERE id = auth.uid()));
+
+CREATE POLICY "Users can select final transcriptions"
+ON final_transcriptions FOR SELECT
+USING (true);
+
+```
+
+I then got "Success. No rows returned"
+
+**Senior Project – Session & Layout Implementation**  
+
+Today I set up the client and public layouts in SvelteKit.  
+
+I created a dynamic Header with role-based navigation and a Settings modal.  
+
+I connected Supabase authentication to manage sessions across pages.  
+
+I learned how to use server-side layouts to securely provide session data.  
+
+I learned how to reactively bind `$page.data.session` in client layouts.  
+
+I learned the importance of file casing and avoiding circular imports to prevent TypeScript and Vite errors.
+
+I also created a basic client dashboard page that fetches and dsiplays the logged in users profile info from the supabase "profiles" table. it was a process but i think we're getting there.
+
+
+## Novemner 15 2025 | Continuing Role Based Routing and Dashboard Development
+
+
+
+
+## November 21 2025 | Working on Transcript page and role based routing 
+
+Today I worked on fixing the session and profile handling for my Clario transcript app. The main problem was that I didn’t have an active session, so the “Join” button for rooms wasn’t working and kept saying, “please input a valid ID.” I realized that without a session seeded in Supabase, the app couldn’t navigate to a transcript room properly.
+
+I tried a few things: I thought about creating a test session in Supabase for a fake class like “Math 101” to see if joining would work. I also noticed that after logging in as a transcriber, my user wasn’t being added automatically to the profiles table. To fix that, I attempted using an ensureProfile() function to create a profile automatically.
+
+However, adding ensureProfile() caused more problems. It broke the layout server because event was undefined, and multiple calls to it were causing errors. Even after logging out and back in, the issue persisted because the user_metadata.role was incorrectly set to "client" instead of "transcriber".
+
+Looking at the Supabase logs, I noticed:
+
+Initial sessions were null until login succeeded.
+
+Supabase warned that getSession() could be insecure and suggested using getUser() instead.
+
+The login finally worked, but the role still needed fixing.
+
+Fetching /client/sessions returned 404, so that route either doesn’t exist or isn’t connected yet.
+
+Next steps I identified:
+
+Correct the user role in Supabase to "transcriber" for testing.
+
+Switch to supabase.auth.getUser() for secure server-side authentication.
+
+Update +layout.server.ts so profiles are automatically created for logged-in users.
+
+Fix or create the /client/sessions route.
+
+Avoid passing the wrong argument to ensureProfile(); instead, pass the Supabase client or user object.
+
+Overall, it was a day of debugging Supabase authentication and profile creation. Progress was made in understanding why the transcriber login wasn’t working, and I now have a clear plan for fixing it so that sessions and profiles will function correctly.
+
+However, Supabase is going to be having issues the next few days, so I will have to figure out how the heck I’m going to attempt to catch up.
+
+This will be a stressful next week. 
+
+
+nov 24 2025 | fixing login issues and adding admin role
+
+
+``sql
+-- Delete all rows in the profiles table and reset any auto-generated IDs
+TRUNCATE TABLE profiles RESTART IDENTITY CASCADE;
+```
+
+Today I worked on my live “room” setup. I got the server-side check working so it knows who’s entering the room, pulls their name and role, and makes sure they’re logged in. I also set up the page that loads old transcript messages, listens for new ones in real time, and lets transcribers or admins send messages. I cleaned up how the session ID is passed around to try to connect everything correctly. I also tried to work on the supabase issues and removed login issues so i could create an admin role. 
+
+
+nov 26 
+
+I figured out why client/sessions routes had issues, its because I regredibly  forgot sessions is supposed to bethe "room" folder. 
+
+I also worked on the admin user management page 
+ (Src/routes/admin/[users]/+page.svelte) 
+ 
+ I  added checks to make sure only someone who’s already an admin can create a new admin or give someone admin rights. This way, no one can accidentally or intentionally give themselves extra permissions, and the roles for clients, transcribers, and admins stay safe and clear
+
+now if it works only time will tell, but i at least have it started and there are no visible problems in visual studio code.

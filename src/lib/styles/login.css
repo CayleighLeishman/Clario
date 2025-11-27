@@ -1,59 +1,64 @@
-/* Login page */
-.login-page {
-  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
-  color: var(--color-text-light);
-}
+/* for login page */
+  .login-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+    color: var(--color-text-light);
+  }
 
-/* Login card */
-.login-card {
-  background: var(--color-bg);
-  color: var(--color-text);
-}
+ .login-card {
+    background: var(--color-bg);
+    color: var(--color-text);
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    max-width: 400px;           
+    display: flex;
+    flex-direction: column;
+    margin: 0 auto;               
+ }
 
-/* Buttons */
-.client-button {
-  background: var(--color-primary);
-  color: var(--color-text-light);
-}
+  .login-card h1 {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
 
-.client-button:hover {
-  background: var(--color-primary-hover);
-}
+  label {
+    margin-bottom: 0.3rem;
+    font-weight: 500;
+  }
 
-.transcriber-button {
-  background: var(--color-secondary);
-  color: var(--color-text-light);
-}
+  input {
+    padding: 0.6rem 0.8rem;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    margin-bottom: 1.5rem; /* spacing between inputs */
+    font-size: 1rem;
+    width: 100%;
+  }
 
-.transcriber-button:hover {
-  background: var(--color-secondary-hover);
-}
+  .error {
+    color: #ff6b6b;
+    text-align: center;
+    margin-top: 0.5rem;
+  }
 
-/* Modal */
-.settings-modal {
-  background: var(--color-bg);
-  color: var(--color-text);
-}
+  .register-link {
+    margin-top: 1.5rem;
+    text-align: center;
+    font-size: 0.9rem;
+  }
 
-.settings-buttons button:first-child {
-  background: var(--color-primary);
-  color: var(--color-text-light);
-}
+  .register-link a {
+    color: var(--color-secondary);
+    text-decoration: underline;
+  }
 
-.settings-buttons button:first-child:hover {
-  background: var(--color-primary-hover);
-}
-
-.settings-buttons button:last-child {
-  background: var(--color-bg-alt);
-  color: var(--color-text);
-}
-
-.settings-buttons button:last-child:hover {
-  background: var(--color-secondary-hover);
-}
-
-/* Overlay */
-.settings-overlay {
-  background: var(--color-overlay);
-}
+  @media (max-width: 500px) {
+    .login-card {
+      padding: 1.5rem;
+      margin: 1rem;
+    }
+  }

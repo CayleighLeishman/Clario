@@ -24,10 +24,11 @@
     </p>
   </section>
 
-  <section>
+    <section>
     <a href="/login">
       Get Started
     </a>
   </section>
 </main>
+
 

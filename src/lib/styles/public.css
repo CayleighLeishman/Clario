@@ -32,8 +32,10 @@ p {
   line-height: 1.6;
 }
 
-a {
-  display: inline-block;
+
+/* shared button styles  */
+.btn {
+ display: inline-block;
   margin-top: 1rem;
   padding: 0.75rem 1.5rem;
   background-color: #3b82f6; /* blue */
@@ -43,6 +45,7 @@ a {
   transition: background-color 0.2s ease-in-out;
 }
 
-a:hover {
-  background-color: #2563eb; /* darker blue on hover */
+.btn:hover {
+  background-color: #2563eb; /* darker blue */
 }
+

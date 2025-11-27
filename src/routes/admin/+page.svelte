@@ -15,7 +15,7 @@
   // --------------------------
   // TYPES (WHAT KINDS OF DATA WE HAVE)
   // --------------------------
-  type Role = 'student' | 'transcriber' | 'admin';
+  type Role = 'client' | 'transcriber' | 'admin';
 
   type User = {
     id: string;
@@ -35,7 +35,7 @@
   // --------------------------
   // FILTER USERS (SHOW ONLY CERTAIN ROLES)
   // --------------------------
-  let filter: 'all' | 'student' | 'transcriber' = 'all';
+  let filter: 'all' | 'client' | 'transcriber' = 'all';
 
   function filteredUsers() {
     if (filter === 'all') return users;
@@ -53,7 +53,7 @@
   let newName = '';
   let newEmail = '';
   // Include 'admin' here but restrict in UI if current user isn't admin
-  let newRole: Role = 'student';
+  let newRole: Role = 'client';
   let newPassword = '';
 
   // --------------------------
@@ -92,7 +92,7 @@
       newName = '';
       newEmail = '';
       newPassword = '';
-      newRole = 'student'; // reset role
+      newRole = 'client'; // reset role
     } else {
       alert('Error adding user: ' + result.error);
     }
@@ -125,7 +125,7 @@
 
 <div class="admin-container">
   <div class="sidebar">
-    <div>Total Clients: {users.filter(u => u.role === 'student').length}</div>
+    <div>Total Clients: {users.filter(u => u.role === 'client').length}</div>
     <div>Total Transcribers: {users.filter(u => u.role === 'transcriber').length}</div>
     <div>Active Sessions: 1</div>
 
@@ -142,7 +142,7 @@
       <input type="email" placeholder="Email" bind:value={newEmail} />
 
       <select bind:value={newRole}>
-        <option value="student">Client</option>
+        <option value="client">Client</option>
         <option value="transcriber">Transcriber</option>
         {#if currentUserRole === 'admin'}
           <option value="admin">Admin</option>
@@ -156,7 +156,7 @@
 
   <div class="main">
     <div>
-      <button on:click={() => filter = 'student'}>Clients</button>
+      <button on:click={() => filter = 'client'}>Clients</button>
       <button on:click={() => filter = 'transcriber'}>Transcribers</button>
       <button on:click={() => filter = 'all'}>All Users</button>
     </div>
@@ -190,11 +190,11 @@
                     updateUserRole(
                       currentUserRole,
                       user.id,
-                      user.role === 'student' ? 'transcriber' : 'student'
+                      user.role === 'client' ? 'transcriber' : 'client'
                     )
                   }
                 >
-                  {user.role === 'student' ? 'Make Transcriber' : 'Make Client'}
+                  {user.role === 'client' ? 'Make Transcriber' : 'Make Client'}
                 </button>
               {/if}
             </td>

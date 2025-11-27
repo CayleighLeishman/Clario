@@ -10,7 +10,7 @@ export const load: PageServerLoad = async (event) => {
     // If the user is already logged in and has a role, redirect them to the correct dashboard
     if (session?.role) {
         switch (session.role) {
-            case 'student':
+            case 'client':
                 throw redirect(303, '/client/dashboard'); // Redirect students
             case 'transcriber':
                 throw redirect(303, '/transcriber/dashboard'); // Redirect transcribers

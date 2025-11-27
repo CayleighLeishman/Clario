@@ -1,4 +1,4 @@
-// src/routes/admin/[users]/+[ages.svelte]]
+<!-- src/routes/admin/[users]/+page.svelte -->
 <script lang="ts">
     // --------------------------
     // IMPORTS
@@ -6,11 +6,12 @@
     import Header from '$lib/components/Header.svelte';
     import Footer from '$lib/components/Footer.svelte';
     import '$lib/styles/admin.css';
+    import type { Session } from '@supabase/supabase-js';
 
     // --------------------------
     // TYPES
     // --------------------------
-    type Role = 'student' | 'transcriber' | 'admin';
+    type Role = 'client' | 'transcriber' | 'admin';
 
     type User = {
         id: string;
@@ -21,33 +22,30 @@
         status: string;
     };
 
-    type Session = {
-        userId: string;
-        role: Role;
-        email: string;
-    };
-
     // --------------------------
     // DATA FROM SERVER
     // --------------------------
-    // This tells TypeScript "the page gets a users list and maybe a session"
-   export let data: { users: User[]; session: Session | null } = {
-    users: [],
-    session: null
-};
+    export let data: { users: User[]; session: Session | null } = {
+        users: [],
+        session: null
+    };
 
     // --------------------------
     // USERS & SESSION
     // --------------------------
-    let users: User[] = data.users ;// our list of users
+    let users: User[] = data.users; // list of users
     let session: Session | null = data.session; // logged-in user info
-    let currentUserRole: Role = session?.role ?? 'student'; // default role if not logged in
+
+    // Stop execution if current user has no role (prevent accidental admin rights)
+    if (!session?.user.user_metadata.role) {
+        throw new Error('User role not set — access denied');
+    }
+    let currentUserRole: Role = session.user.user_metadata.role as Role;
 
     // --------------------------
     // FILTERING USERS
     // --------------------------
-    // We can show all users, only students, or only transcribers
-    let filter: 'all' | 'student' | 'transcriber' = 'all';
+    let filter: 'all' | 'client' | 'transcriber' = 'all';
     function filteredUsers() {
         if (filter === 'all') return users;
         return users.filter(u => u.role === filter);
@@ -56,21 +54,21 @@
     // --------------------------
     // JOIN SESSION INPUT
     // --------------------------
-    let joinSessionCode = ''; // text input for joining a session
+    let joinSessionCode = ''; // input for joining a session
 
     // --------------------------
     // NEW USER INPUTS
     // --------------------------
     let newName = '';
     let newEmail = '';
-    let newRole: 'student' | 'transcriber' = 'student';
+    let newRole: 'client' | 'transcriber' = 'client';
     let newPassword = '';
 
     // --------------------------
     // HELPER FUNCTIONS
     // --------------------------
 
-    // Remove a user from the system
+    // Remove a user
     async function removeUser(id: string) {
         const res = await fetch('/api/admin/users', {
             method: 'DELETE',
@@ -79,14 +77,26 @@
         });
         const result = await res.json();
         if (result.success) {
-            users = users.filter(u => u.id !== id); // update locally so the table refreshes
+            users = users.filter(u => u.id !== id); // update locally
         } else {
             alert('Error removing user: ' + result.error);
         }
     }
 
     // Add a new user
-    async function addUser(name: string, email: string, role: 'student' | 'transcriber', password: string) {
+    async function addUser(name: string, email: string, role: 'client' | 'transcriber' | 'admin', password: string) {
+        // Only admins can create another admin
+        if (role === 'admin' && currentUserRole !== 'admin') {
+            alert("Only admins can create another admin!");
+            return;
+        }
+
+        // Ensure role is valid
+        if (!['client', 'transcriber', 'admin'].includes(role)) {
+            alert("Invalid role selected");
+            return;
+        }
+
         const res = await fetch('/api/admin/users', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -94,16 +104,17 @@
         });
         const result = await res.json();
         if (result.success) {
-            users = [...users, result.user]; // add to the list
+            users = [...users, result.user]; // update table
             newName = '';
             newEmail = '';
             newPassword = '';
+            newRole = 'client'; // reset default
         } else {
             alert('Error adding user: ' + result.error);
         }
     }
 
-    // Change a user's role
+    // Update a user's role
     async function updateUserRole(targetId: string, newRole: Role) {
         // Only admins can make someone an admin
         if (newRole === 'admin' && currentUserRole !== 'admin') {
@@ -128,14 +139,14 @@
 <!-- --------------------------
      PAGE HEADER
 -------------------------- -->
-<Header />
+<Header session={data.session} />
 
 <div class="admin-container">
     <!-- --------------------------
          SIDEBAR
     -------------------------- -->
     <div class="sidebar">
-        <div>Total Clients: {users.filter(u => u.role === 'student').length}</div>
+        <div>Total Clients: {users.filter(u => u.role === 'client').length}</div>
         <div>Total Transcribers: {users.filter(u => u.role === 'transcriber').length}</div>
         <div>Active Sessions: 1</div>
 
@@ -153,10 +164,16 @@
             <h4>Add New User</h4>
             <input type="text" placeholder="Name" bind:value={newName} />
             <input type="email" placeholder="Email" bind:value={newEmail} />
+
+            <!-- Role selector: show admin only if current user is admin -->
             <select bind:value={newRole}>
-                <option value="student">Client</option>
+                <option value="client">Client</option>
                 <option value="transcriber">Transcriber</option>
+                {#if currentUserRole === 'admin'}
+                    <option value="admin">Admin</option>
+                {/if}
             </select>
+
             <input type="password" placeholder="Password" bind:value={newPassword} />
             <button on:click={() => addUser(newName, newEmail, newRole, newPassword)}>Add User</button>
         </div>
@@ -167,7 +184,7 @@
     -------------------------- -->
     <div class="main">
         <div>
-            <button on:click={() => filter = 'student'}>Clients</button>
+            <button on:click={() => filter = 'client'}>Clients</button>
             <button on:click={() => filter = 'transcriber'}>Transcribers</button>
             <button on:click={() => filter = 'all'}>All Users</button>
         </div>
@@ -188,25 +205,30 @@
                     <tr>
                         <td>{user.name}</td>
                         <td>{user.email}</td>
-                        <td>{user.role}</td>
+                        <td>
+                            {#if currentUserRole === 'admin'}
+                                <!-- Admins can change roles via dropdown -->
+                                <select
+                                    value={user.role}
+                                    on:change={(e) => {
+                                        const select = e.target as HTMLSelectElement | null;
+                                        if (!select) return;
+                                        updateUserRole(user.id, select.value as Role);
+                                    }}
+                                >
+                                    <option value="client">Client</option>
+                                    <option value="transcriber">Transcriber</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            {:else}
+                                <!-- Non-admins just see role -->
+                                {user.role}
+                            {/if}
+                        </td>
                         <td>{user.created_at}</td>
                         <td>{user.status}</td>
                         <td>
                             <button on:click={() => removeUser(user.id)}>Remove</button>
-
-                            <!-- Only show role change buttons if logged-in user is admin -->
-                            {#if currentUserRole === 'admin'}
-                                <button
-                                    on:click={() =>
-                                        updateUserRole(
-                                            user.id,
-                                            user.role === 'student' ? 'transcriber' : 'student'
-                                        )
-                                    }
-                                >
-                                    {user.role === 'student' ? 'Make Transcriber' : 'Make Client'}
-                                </button>
-                            {/if}
                         </td>
                     </tr>
                 {/each}

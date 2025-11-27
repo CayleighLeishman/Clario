@@ -1,8 +1,7 @@
+<!-- src/routes/(public)/+layout.svelte -->
 <script lang="ts">
   
   import '$lib/styles/global.css';
-  import Header from '$lib/components/Header.svelte';
-  import Footer from '$lib/components/Footer.svelte';
   import type {LayoutData } from './$types';
 
   // import { page } from '$app/stores';
@@ -18,6 +17,4 @@
   $: session = data.session;   
 </script>
 
-<Header session={session} />
 <slot />
-<Footer />

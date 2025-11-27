@@ -1,6 +1,7 @@
 <script lang="ts">
 // to do : this is footer ai gererated, check content
 
+import '$lib/styles/global.css';
 </script>
 
 <footer class="footer">

@@ -1,6 +1,6 @@
 // src/hooks.server.ts
 import type { Handle } from '@sveltejs/kit';
-import { supabaseAdmin } from '$lib/supabaseServer'; // your server Supabase client
+import { supabaseAdmin } from '$lib/utils/supabaseServer'; // your server Supabase client
 
 export const handle: Handle = async ({ event, resolve }) => {
   // Start with no session

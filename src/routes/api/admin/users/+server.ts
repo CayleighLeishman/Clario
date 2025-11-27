@@ -1,7 +1,7 @@
 // this deletes/POST./PATCH endpoints using supabaseAdmin 
 
 import type { RequestHandler } from '@sveltejs/kit';
-import { supabaseAdmin } from '$lib/supabaseAdmin';
+import { supabaseAdmin } from '$lib/utils/supabaseAdmin';
 
 export const DELETE: RequestHandler = async ({ request }) => {
   const { id } = await request.json();

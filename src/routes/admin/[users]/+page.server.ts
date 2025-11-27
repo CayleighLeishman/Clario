@@ -4,7 +4,7 @@
 import type { PageServerLoad } from './$types';
 
 // Import our helper to create a Supabase server client
-import { createSupabaseServer } from '$lib/supabaseServer';
+import { createSupabaseServer } from '$lib/utils/supabaseServer';
 
 // This function runs on the server when the page loads
 export const load: PageServerLoad = async (event) => {

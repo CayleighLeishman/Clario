@@ -1,4 +1,4 @@
-import {supabaseUser } from '$lib/supabaseUser';
+import {supabaseUser } from '$lib/utils/supabaseUser';
 import { invalidateAll } from '$app/navigation';
 import type { HandleClientError } from '@sveltejs/kit';
 

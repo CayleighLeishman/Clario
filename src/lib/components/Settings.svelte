@@ -1,7 +1,7 @@
 <!-- This is what gets the settings button working -->
 <script lang="ts">
   import '$lib/styles/settings-popup.css';
-  import { supabaseUser } from '$lib/supabaseUser';
+  import { supabaseUser } from '$lib/utils/supabaseUser';
   import { createEventDispatcher, onMount } from 'svelte';
  
   // Allows the header to know when to close this modal
