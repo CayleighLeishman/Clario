@@ -74,7 +74,7 @@
             <!-- if client -->
         {#if session?.user?.user_metadata?.role === 'client'}
 			<a href="/client/classnotes">Class Notes</a>
-			<a href= /client/dashboard>Dashboard</a>
+			<a href="/client/dashboard">Dashboard</a>
 
             <!-- if admin -->
         {:else if session?.user?.user_metadata?.role === 'admin'}
@@ -113,6 +113,8 @@
             <svelte:component this={Settings} on:close={() => showSettings = false} />
         {/if}
     </nav>
+
+    <p >ROLE: {session?.user?.user_metadata?.role}</p>
 
 </header>
 

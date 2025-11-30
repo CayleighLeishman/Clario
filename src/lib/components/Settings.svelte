@@ -1,63 +1,55 @@
-<!-- This is what gets the settings button working -->
 <script lang="ts">
   import '$lib/styles/settings-popup.css';
   import { supabaseUser } from '$lib/utils/supabaseUser';
   import { createEventDispatcher, onMount } from 'svelte';
- 
-  // Allows the header to know when to close this modal
+
+  // Used to notify the parent <Header> to close the modal
   const dispatch = createEventDispatcher();
 
-//   ******************************************
-// 1. Setting variables with default values 
-//   ******************************************
-  let theme: 'light' | 'dark' = 'light';// Default theme
-  let text_color = '#000000'; // Default text color (black)
-  let background = '#ffffff';// Default background color (white)
-  let notifications = true; // Default notifications on
+  // Local state: form inputs with default values
+  let theme: 'light' | 'dark' = 'light';
+  let text_color = '#000000';
+  let background = '#ffffff';
+  let notifications = true;
 
-  //*************************************/
-  //2. Get the current logged-in session 
-  //*************************************/
-    // Store the current Supabase user session (who is logged in)
-    let session: any = null;
+  // Stores the authenticated user's session
+  let session: any = null;
 
-  //*****************************************************************/
-  // 3. Load user settings from database when the component opens
-  //*****************************************************************/
-  
-   // Get the current session from Supabase
+  /* -----------------------------------------------------
+     Load the current session and user settings on mount
+     ----------------------------------------------------- */
   onMount(async () => {
-    const sessionRes = await supabaseUser.auth.getSession();
-    session = sessionRes.data.session;
+    const { data: sessionData } = await supabaseUser.auth.getSession();
+    session = sessionData.session;
 
-    if (!session) return;// Stop if no user is logged in
-    const userId = (await session).user.id;// Get the user's ID
+    if (!session) return;
 
-    // Fetch the settings from user_settings table
-    const { data, error } = await supabaseUser
+    const userId = session.user.id;
+
+    // Fetch the existing settings from Supabase
+    const { data } = await supabaseUser
       .from('user_settings')
       .select('*')
       .eq('user_id', userId)
       .single();
 
+    // If the user has saved settings, fill the form with them
     if (data) {
-      // If settings exist, fill the form with current values
       theme = data.theme;
       text_color = data.text_color;
       background = data.background;
       notifications = data.notifications;
     }
   });
-  
-  //*****************************************************************/
-  //4. Save settings back to Supabase
- //*****************************************************************/
 
+  /* -----------------------------------------------------
+     Save the updated settings back to Supabase
+     ----------------------------------------------------- */
   async function saveSettings() {
-    if (!session) return; // Stop if no user logged in
-    const userId = (await session).user.id; // Get the user's ID
+    if (!session) return;
 
-    // Insert new row if none exists, or update existing row
+    const userId = session.user.id;
+
     const { error } = await supabaseUser
       .from('user_settings')
       .upsert({
@@ -68,43 +60,43 @@
         notifications
       });
 
-    if (!error) alert('Settings saved!');// Show success message
-    else alert('Error saving settings: ' + error.message);
+    if (error) {
+      alert('Error saving settings: ' + error.message);
+    } else {
+      alert('Settings saved.');
+    }
   }
-  
- //**************************/
-  //5. Close modal function
-//**************************/
+
+  /* -----------------------------------------------------
+     Close the modal
+     ----------------------------------------------------- */
   function close() {
-    dispatch('close'); // Tell parent component to hide this modal
+    dispatch('close');
   }
 </script>
 
 <!--
-******************************************
-6. Modal overlay (click outside to close)
-****************************************** 
---> 
-
-<!-- 
-*type: button                                               : Allegedly this tell sthe browser "Hey, This button does not submit anything - it just does what I tell it in typescript"
-*on:click={close}                                           : This Means "Close modal when overlay is clicked"
-*  on:keydown={(e) => e.key === 'Escape' && close()}        : This means "Close modal when user presses Escape key" (for keyboard navigation)
-*  aria-label="Close settings"                              : This is a Accessibilit feature that describes button action for screen readers
+====================================================
+ Modal Overlay (clicking it closes the settings)
+====================================================
 -->
-<button type="button"class="settings-overlay"
+<button
+  type="button"
+  class="settings-overlay"
   on:click={close}
   on:keydown={(e) => e.key === 'Escape' && close()}
   aria-label="Close settings"
 ></button>
 
-<!-- *************************
-7. Modal content box 
-*******************************-->
+<!--
+====================================================
+ Modal Content Box
+====================================================
+-->
 <div class="settings-modal">
   <h2>User Settings</h2>
 
-  <!-- Theme selection -->
+  <!-- Theme -->
   <label>
     Theme:
     <select bind:value={theme}>
@@ -113,25 +105,25 @@
     </select>
   </label>
 
-  <!-- Pick Text color  -->
+  <!-- Text Color -->
   <label>
     Text Color:
     <input type="color" bind:value={text_color} />
   </label>
 
-  <!-- Pick Background color -->
+  <!-- Background Color -->
   <label>
     Background Color:
     <input type="color" bind:value={background} />
   </label>
 
-  <!-- Notifications toggle -->
+  <!-- Notifications -->
   <label>
     Notifications:
     <input type="checkbox" bind:checked={notifications} />
   </label>
 
-  <!-- Buttons to save or close -->
+  <!-- Buttons -->
   <div class="settings-buttons">
     <button on:click={saveSettings}>Save</button>
     <button on:click={close}>Close</button>

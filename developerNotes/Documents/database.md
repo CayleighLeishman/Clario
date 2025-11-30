@@ -1,5 +1,57 @@
 # Clario Database Schema Documentation (Supabase-Optimized)
 
+
+++++ This is the current database as of november 27 2025. Edit this later into proper markdown format down below.
+---- 
+I have 
+final_transcriptions 
+id
+lecture_id
+raw_full_text
+duration_min
+completed_at
+
+
+profiles
+id 
+full_name
+prefered_name
+role
+is_admin
+bio
+created_at
+last_seen
+
+student_enrollments
+id
+student_id
+course_lecture_id
+joined_at
+
+course_lectures
+id
+course_name
+lecture_date
+join_code
+created_at
+
+realtime_chunks 
+id 
+session_id
+sequence_number
+text_chunk
+created_at
+
+active_Sessions
+id
+lecture_id
+transcriber_id
+is_live
+session_token
+started_at
+ended_at
+++++
+
 This schema is designed to work with **Supabase Authentication**. Authentication (emails, passwords, OAuth, etc.) is handled by `auth.users`. All tables below reside in the public schema and store application-specific data.
 
 ---

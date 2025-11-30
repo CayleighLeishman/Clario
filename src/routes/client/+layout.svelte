@@ -1,8 +1,6 @@
 <!-- // src/routes/client/+layout.svelte -->
 <script lang="ts">
   import { page } from '$app/stores';
-	import Footer from '$lib/components/Footer.svelte';
-  import Header from '$lib/components/Header.svelte';
   import "$lib/styles/dashboards.css";
 
   type ClientSession = {

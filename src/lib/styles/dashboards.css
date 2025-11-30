@@ -1,16 +1,6 @@
 
-/* =============================
-         Dark Mode Overrides
-   ============================= */
-@media (prefers-color-scheme: dark) {
-    :root {
-        --color-bg: #1a1a1a;
-        --color-bg-alt: #2b2b2b;
-        --color-text: #f0f0f0;
-        --color-border: #333;
-    }
-}
-
+/* src/lib/styles/dashboards.css for all dashboard styles */
+/* all colors are controled in Global.css including for dashboards */
 /* =============================
         Dashboard Layout
    ============================= */

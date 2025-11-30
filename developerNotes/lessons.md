@@ -929,3 +929,22 @@ I also worked on the admin user management page
  I  added checks to make sure only someone who’s already an admin can create a new admin or give someone admin rights. This way, no one can accidentally or intentionally give themselves extra permissions, and the roles for clients, transcribers, and admins stay safe and clear
 
 now if it works only time will tell, but i at least have it started and there are no visible problems in visual studio code.
+
+
+
+november 27 2025 | working on supabaseBrowser and working on classnotes page
+
+11am
+Today I worked on the `supabaseBrowser` file to make sure the Supabase client is properly initialized for browser use. I ensured that the environment variables for the Supabase URL and anon key are correctly imported from the public environment variables. I learned that I needed a `supabaseBrowser` client to safely access Supabase from the browser without exposing any sensitive keys.
+
+I also worked on setting up the `classNotes` page for the client so that once the transcript page is functional, I can save and view the transcription results on the website. I’m not sure if it fully works yet, but at least I now have a webpage in place to test and integrate with the transcript page once it’s ready.
+
+
+November 28 2025 | working on classnotes page and fixing supabase issues
+
+today I continued working on the classnotes page. I set up the basic structure and layout so that clients can view their saved notes from past transcription sessions. I created a list view to display each classntes with its title, date and a snippet of the content. 
+
+November 20 2025 | fixing issues
+
+well now the classpage wont show up, so to change my topic i decided to try to work on settings, but then realized how late it was and decided to call it a night. Hopefully i can find my laptop charger tomorrow and get back to work other wise I'll be out of money soon and that will be a bummer. 
+

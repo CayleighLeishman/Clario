@@ -1,11 +1,12 @@
-/* to do : check this file, it's AI automated */
-
+/* src/lib/styles/global.css */
 /* =============================
       Root Theme Variables
    ============================= */
 :root {
-  /*  Main Colors */
-  --color-bg: #ffffff;             /* Card / page background */
+ 
+  /* button and text colors  */
+  --color-bg: #ffffff;             /* Card / page background specific colors */
+  --color-btn-txt: #fff;           /* Button text color */
   --color-bg-alt: #f5f7fa;         /* Secondary background / modal close button */
   --color-text: #1a1a1a;           /* Primary text */
   --color-text-light: #ffffff;     /* Light text (on dark backgrounds) */
@@ -15,8 +16,12 @@
   --color-secondary: #e0e7ff;      /* Secondary buttons / backgrounds */
   --color-secondary-hover: #d1d5db;/* Hover for secondary buttons */
 
+ /* for dashboards (for all dashboard CSS, see "lib/styles/dashboards.css" */
+ --scrlbar-color: ##ccc;             /* scrollbar color */
+
+  /* if needed accents: optional */
   --color-accent: #ffb703;         /* Accent / highlights */
-  --color-border: #dcdcdc;         /* Borders / dividers */
+  --color-border: #ccc;         /* Borders / dividers */
   --color-success: #38a169;        /* Success states */
   --color-error: #e53e3e;          /* Error states */
 
@@ -36,6 +41,19 @@
   /* Theme support */
   color-scheme: light dark;
 }
+
+/* =============================
+         Dark Mode Overrides
+   ============================= */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --color-bg: #1a1a1a;
+        --color-bg-alt: #2b2b2b;
+        --color-text: #f0f0f0;
+        --color-border: #333;
+    }
+}
+
 
 /* =============================
             Header 
