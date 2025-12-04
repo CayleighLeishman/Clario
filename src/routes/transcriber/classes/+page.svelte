@@ -1,3 +1,4 @@
+<!-- src/routes/transcriber/classes/+page.svelte -->
 <script lang="ts">
   import { goto } from '$app/navigation';
 

@@ -1,60 +1,182 @@
-
-/* src/lib/styles/dashboards.css for all dashboard styles */
-/* all colors are controled in Global.css including for dashboards */
-/* =============================
-        Dashboard Layout
-   ============================= */
-.dashboard {
-    display: flex;
-    min-height: 80vh;
-    gap: var(--gap);
-    background-color: var(--color-bg);
-    color: var(--color-text);
-    font-family: var(--font-family);
-}
+/* =========================================
+   Transcriber Dashboard Styles
+========================================= */
 
 /* =============================
-             Sidebar
-   ============================= */
-.sidebar {
-    width: 200px;
-    padding: var(--padding);
-    background-color: var(--color-bg-alt);
-    border-radius: var(--radius);
-    border: 1px solid var(--color-border);
+   Layout & Container
+============================= */
+.dashboard-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  font-family: Arial, sans-serif;
+  background-color: var(--color-bg);
 }
 
-.sidebar a {
-    display: block;
-    margin-bottom: 0.5rem;
-    text-decoration: none;
-    color: var(--color-text);
-    font-size: var(--font-size-base);
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background-color: var(--color-bg);
+  border-bottom: 1px solid #ddd;
 }
 
-.sidebar a:hover {
-    color: var(--color-primary);
-    text-decoration: underline;
+.logo {
+  font-size: 24px;
+  font-weight: bold;
+  color: #333;
 }
 
 /* =============================
-            Main Content
-   ============================= */
-.content {
-    flex: 1;
-    padding: var(--padding);
-    background-color: var(--color-bg-alt);
-    border-radius: var(--radius);
-    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+   Main Content Grid
+============================= */
+.main-content {
+  display: grid;
+  grid-template-columns: 1fr 2fr 2fr;
+  gap: 20px;
+  padding: 20px;
+  flex-grow: 1;
+  overflow: hidden;
 }
 
-.content h1 {
-    font-size: var(--font-size-heading);
-    margin-bottom: var(--gap);
+/* =============================
+   Panels Base
+============================= */
+.panel {
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 4px var(--color-border);
 }
 
-.content p {
-    font-size: var(--font-size-base);
-    line-height: 1.5;
+.panel-header {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 10px;
+}
 
+.panel h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.note {
+  font-size: 12px;
+  color: var(--color-overlay);
+  margin-left: 10px;
+}
+
+/* =============================
+   Join Panels
+============================= */
+.join-panel {
+  max-height: 150px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.join-panel input {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.join-panel button {
+  background-color: var(--color-primary);
+  color: var(--color-btn-txt);
+  padding: 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.join-panel button:hover {
+  background-color: var(--color-primary-hover);
+}
+
+/* =============================
+   Scrollable Panels (Schedule / History)
+============================= */
+.schedule-panel,
+.history-panel {
+  min-height: 0;
+}
+
+.panel-list {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+
+/* Scrollbar styling */
+.panel-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.panel-list::-webkit-scrollbar-thumb {
+  background-color: #ccc;
+  border-radius: 4px;
+}
+
+.panel-list::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+
+/* =============================
+   Session Card Styles
+============================= */
+.session-card {
+  border: 1px solid var(--color-border);
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 4px;
+  background-color: var(--color-bg-alt);
+}
+
+.session-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+.session-time {
+  font-weight: bold;
+}
+
+.session-code {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.session-detail {
+  margin: 0 0 5px;
+  font-size: 13px;
+  color: var(--color-primary-hover);
+}
+
+/* Lines under schedule card */
+.detail-lines {
+  margin-top: 5px;
+}
+
+.detail-lines .line {
+  height: 1px;
+  background-color: var(--color-bg-alt);
+  margin-bottom: 3px;
+  width: 80%;
 }

@@ -1,8 +1,5 @@
 <script lang="ts">
 
-  // ============================
-  // ======= IMPORTS
-  //=============================
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { supabaseUser } from '$lib/utils/supabaseUser';
