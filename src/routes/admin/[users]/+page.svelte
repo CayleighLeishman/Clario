@@ -3,8 +3,7 @@
     // --------------------------
     // IMPORTS
     // --------------------------
-    import Header from '$lib/components/Header.svelte';
-    import Footer from '$lib/components/Footer.svelte';
+
     import '$lib/styles/admin.css';
     import type { Session } from '@supabase/supabase-js';
 
@@ -136,11 +135,6 @@
     }
 </script>
 
-<!-- --------------------------
-     PAGE HEADER
--------------------------- -->
-<Header session={data.session} />
-
 <div class="admin-container">
     <!-- --------------------------
          SIDEBAR
@@ -237,7 +231,3 @@
     </div>
 </div>
 
-<!-- --------------------------
-     PAGE FOOTER
--------------------------- -->
-<Footer />

@@ -17,3 +17,5 @@ I’ll add real-time functionality once i get dashboards properly working.</p>
   placeholder="Transcript will appear here..."
   style="width:100%; height:300px;"
 ></textarea>
+
+<button style="margin-top:1rem;">End Session</button>

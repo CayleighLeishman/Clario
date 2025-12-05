@@ -65,6 +65,7 @@
 
     <!-- Center of header: Platform name-->
     <h1 class="title">Clario</h1>
+     <p >ROLE: {session?.user?.user_metadata?.role}</p>
 
     <!-- Right of Header: Role-based navigation links and utilities -->
     <nav class="nav-links">
@@ -84,9 +85,9 @@
 
             <!-- if transcriber -->
         {:else if session?.user?.user_metadata?.role === 'transcriber'}
-            <a href="/transcriber/tasks">My Tasks</a>
-            <a href="/transcriber/history">History</a>
-			<a href="/transcriber/dashboard">Dashboard</a>
+           <!-- leave blank unless you need special navigation. I'm chosing at
+            this time to leave it blank so they only have the settigns since 
+            everythign is already in dashboard except for "accounts" -->
 
         {/if}
 
@@ -114,7 +115,6 @@
         {/if}
     </nav>
 
-    <p >ROLE: {session?.user?.user_metadata?.role}</p>
 
 </header>
 

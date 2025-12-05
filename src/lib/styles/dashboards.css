@@ -180,3 +180,75 @@ header {
   margin-bottom: 3px;
   width: 80%;
 }
+
+/* =========================================
+   MOBILE RESPONSIVENESS
+========================================= */
+
+/* Tablets & small laptops */
+@media (max-width: 768px) {
+  .main-content {
+    grid-template-columns: 1fr; /* Stack all panels */
+    gap: 15px;
+    padding: 15px;
+  }
+
+  .panel {
+    padding: 12px;
+  }
+
+  .join-panel {
+    max-height: unset; /* allow natural height */
+  }
+
+  .input-group {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .join-panel input,
+  .join-panel button {
+    width: 100%;
+    font-size: 15px;
+  }
+
+  .session-card {
+    font-size: 14px;
+  }
+}
+
+/* Phones (very small screens) */
+@media (max-width: 480px) {
+  .dashboard-container {
+    padding: 0 10px;
+  }
+
+  .main-content {
+    grid-template-columns: 1fr; 
+    gap: 12px;
+    padding: 10px;
+  }
+
+  .panel h3 {
+    font-size: 16px;
+  }
+
+  .join-panel input {
+    padding: 8px;
+    font-size: 14px;
+  }
+
+  .join-panel button {
+    padding: 10px;
+    font-size: 14px;
+  }
+
+  .session-card {
+    padding: 8px;
+    font-size: 13px;
+  }
+
+  .detail-lines .line {
+    width: 100%; /* prevent uneven spacing on phones */
+  }
+}

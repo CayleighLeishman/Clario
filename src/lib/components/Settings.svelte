@@ -6,6 +6,8 @@
   // Used to notify the parent <Header> to close the modal
   const dispatch = createEventDispatcher();
 
+  // to do : see if you want to make the settings layout more like in your SRS or not
+
   // Local state: form inputs with default values
   let theme: 'light' | 'dark' = 'light';
   let text_color = '#000000';

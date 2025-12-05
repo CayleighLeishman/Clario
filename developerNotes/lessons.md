@@ -948,3 +948,203 @@ November 20 2025 | fixing issues
 
 well now the classpage wont show up, so to change my topic i decided to try to work on settings, but then realized how late it was and decided to call it a night. Hopefully i can find my laptop charger tomorrow and get back to work other wise I'll be out of money soon and that will be a bummer. 
 
+# December 04 2025 | 
+
+
+Today I suddenly realized I hadn’t written anything for this week yet. I actually put a lot of work into this week’s project, so I sat down and tried to sort through what I’ve been doing, what I’ve learned, and what I still have to accomplish. It all feels big, but still doable. There will probably still be bugs — but that’s okay.
+
+A lot of this week has been focused on the transcribers’ workflow, and I ended up learning more about Supabase than I expected. Most of my time went into making sure everything connects properly behind the scenes. I still don’t have the transcription page opening yet, but I’m hopeful I can get that part moving by Monday. At the very least, the wireframe drawing will be up. I just really need Supabase to connect properly before anything else can happen.
+
+Honestly, I did not think I would spend as much time in Supabase as I did, but it really shows how much this entire website depends on it. I don’t regret choosing this platform, but it definitely came with a bigger learning curve than I imagined. Every time I thought I was done with one part, I found something new to uncover.
+
+This week’s priority was getting the dashboard in a good place for both transcribers and admins. Today specifically, I spent time planning out how the Account, Display, and Notifications settings should connect, and how to organize the popups so they don’t overlap or break everything.
+
+I’m also thinking ahead about how user preferences will be stored later if I add a user_settings table. Mapping this out actually helped me understand my workflow better and made the project feel a little more manageable. Even though I’m behind, writing everything out made me realize I am making progress — maybe slower and steadier than I expected, but still moving forward.
+
+I also added more RLS for supabsae
+
+```sql
+
+
+-- ============================================================= --
+--                     profiles                                  --
+--  Everyone can read their own profile, admins can read all     --
+-- ============================================================= -- 
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+-- A user can read their own profile
+CREATE POLICY "Users can read own profile"
+ON profiles
+FOR SELECT
+USING (auth.uid() = id);
+
+-- A user can update their own profile
+CREATE POLICY "Users can update own profile"
+ON profiles
+FOR UPDATE
+USING (auth.uid() = id);
+
+-- Allow viewing of *public profile fields* by other users
+-- Only exposes: preferred_name, full_name, bio, role
+
+CREATE POLICY "Users can read limited public profile fields"
+ON profiles
+FOR SELECT
+USING (auth.role() = 'authenticated')
+WITH CHECK (false);  -- prevents INSERT/UPDATE here
+
+--  ====================================================================--
+--                          course_lectures
+-- admin can view Everthing
+-- transcribers view lectures they're scheduled for 
+-- Clients and Transcribers should only see what is relavent for them
+-- clients view lectures they're enrolled in 
+-- ===================================================================== --
+ALTER TABLE course_lectures ENABLE ROW LEVEL SECURITY;
+
+-- Admins can view everything
+CREATE POLICY "Admins can view all lectures"
+ON course_lectures
+FOR SELECT
+USING (auth.jwt()->>'role' = 'admin');
+
+-- Clients can view lectures they are enrolled in
+CREATE POLICY "Clients view lectures they are enrolled in"
+ON course_lectures
+FOR SELECT
+USING (
+  auth.uid() IN (
+    SELECT student_id
+    FROM student_enrollments
+    WHERE course_lecture_id = course_lectures.id
+  )
+);
+
+-- Transcribers can view lectures they are assigned to via active_sessions
+CREATE POLICY "Transcribers can view lectures they are assigned to transcribe"
+ON course_lectures
+FOR SELECT
+USING (
+  auth.uid() IN (
+    SELECT transcriber_id
+    FROM active_sessions
+    WHERE lecture_id = course_lectures.id
+  )
+);
+
+
+
+--  ====================================================================--
+--                         active_sessions
+-- Admins: can view all sessions
+-- Transcribers: see only their own sessions
+-- Transcribers: can create sessions for themselves
+-- ===================================================================== --
+ALTER TABLE active_sessions ENABLE ROW LEVEL SECURITY;
+
+-- Admins can view all sessions
+CREATE POLICY "Admins can view all active sessions"
+ON active_sessions
+FOR SELECT
+USING (auth.jwt()->>'role' = 'admin');
+
+-- Transcriber can view their own live sessions
+CREATE POLICY "Transcriber can view their own session"
+ON active_sessions
+FOR SELECT
+USING (auth.uid() = transcriber_id);
+
+-- Transcriber can create (insert) a new session for themselves
+CREATE POLICY "Transcriber can create their own sessions"
+ON active_sessions
+FOR INSERT
+WITH CHECK (auth.uid() = transcriber_id);
+
+
+--  ====================================================================--
+--                         final_transcriptions
+-- admins can view all
+-- only transcribers from the same lecture should see the transcript
+-- clients can only see transcripts for lectures they attend
+-- ===================================================================== --
+ALTER TABLE final_transcriptions ENABLE ROW LEVEL SECURITY;
+
+-- Admins can view all transcriptions
+CREATE POLICY "Admins can view all transcripts"
+ON final_transcriptions
+FOR SELECT
+USING (auth.jwt()->>'role' = 'admin');
+
+-- Transcribers can view transcripts for lectures they worked on
+CREATE POLICY "Transcribers can view assigned transcripts"
+ON final_transcriptions
+FOR SELECT
+USING (
+  auth.uid() IN (
+    SELECT transcriber_id
+    FROM active_sessions
+    WHERE active_sessions.lecture_id = final_transcriptions.lecture_id
+  )
+);
+
+-- Clients can view transcripts for courses they are enrolled in
+CREATE POLICY "Clients can view transcripts for enrolled lectures"
+ON final_transcriptions
+FOR SELECT
+USING (
+  auth.uid() IN (
+    SELECT student_id
+    FROM student_enrollments
+    WHERE course_lecture_id = final_transcriptions.lecture_id
+  )
+);
+
+-- Transcribers can insert final transcripts ONLY for lectures they worked on
+CREATE POLICY "Transcribers can insert transcripts"
+ON final_transcriptions
+FOR INSERT
+WITH CHECK (
+  auth.uid() IN (
+    SELECT transcriber_id
+    FROM active_sessions
+    WHERE active_sessions.lecture_id = final_transcriptions.lecture_id
+  )
+);
+
+```
+Overall, it was a productive week of learning an dproblem solving. 
+
+also I updated admin so that i could finally log in as admin and I'm trying to find ways to test it properly. Down the line I also want admin to be able to create other admin accounts so we'll
+see what we come up with! 
+
+```sql
+
+-- update an user as an admin
+INSERT INTO profiles (id, full_name, preferred_name, role, is_admin)
+VALUES (
+  '{actual id here}'
+  'Test Admin', 
+  'Admin',
+  'admin',
+  true
+)
+ON CONFLICT (id)
+DO UPDATE SET
+  role = 'admin',
+  is_admin = true;
+
+ -- Promote an existing user to ADMIN in SupABASE AUTH
+UPDATE auth.users
+SET raw_user_meta_data = jsonb_set(
+  COALESCE(raw_user_meta_data, '{}'),
+  '{role}',
+  '"admin"',
+  true
+)
+WHERE id = '{actual id here}';
+
+SELECT id, email, raw_user_meta_data
+FROM auth.users
+WHERE id = '{actual id here}';
+
+```

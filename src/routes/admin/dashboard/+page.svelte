@@ -2,8 +2,7 @@
   // --------------------------
   // IMPORTS
   // --------------------------
-  import Header from '$lib/components/Header.svelte';
-  import Footer from '$lib/components/Footer.svelte';
+
   import '$lib/styles/admin.css';
   import { page } from '$app/stores';
 
@@ -121,8 +120,6 @@
   let currentUserRole: Role = 'admin';
 </script>
 
-<Header />
-
 <div class="admin-container">
   <div class="sidebar">
     <div>Total Clients: {users.filter(u => u.role === 'client').length}</div>
@@ -205,4 +202,4 @@
   </div>
 </div>
 
-<Footer />
+
