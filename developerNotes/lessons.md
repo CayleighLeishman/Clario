@@ -1032,8 +1032,6 @@ USING (
   )
 );
 
-
-
 --  ====================================================================--
 --                         active_sessions
 -- Admins: can view all sessions
@@ -1148,3 +1146,221 @@ FROM auth.users
 WHERE id = '{actual id here}';
 
 ```
+
+
+### December 6 2025 | working on getting the transcript page to load 
+
+so i found out that the transcript page wasn't loading because in supabase its not auto generating the session IDs, so i put in this to the sql tables
+
+```sql
+-- Enable UUID generation if not already on
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+-- Set automatic UUID for course_lectures.id
+ALTER TABLE course_lectures
+ALTER COLUMN id SET DEFAULT gen_random_uuid();
+
+
+```
+
+After that i was able to insert a fake lecture "Biology 101" with a lecture date of 2025-12-05 and join code of BIO101
+
+
+I also created a new table in supabase sinc ei realized i need a place to store the chatbox messages if the transcriber, admin or client sends any messages durign the live transcription session:
+
+```sql
+-- ============================================================
+--                    session_chat
+-- This table stores live chat messages for each transcription
+-- session so clients, transcribers, and admins can
+-- communicate in real time.
+-- ============================================================
+
+CREATE TABLE session_chat (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), 
+  -- Unique ID for each chat message
+
+  session_id uuid NOT NULL,
+  -- Which live transcription session this message belongs to
+
+  sender_id uuid NOT NULL,
+  -- The user who sent the message (client, transcriber, or admin)
+
+  sender_role text NOT NULL,
+  -- The role of the sender so we can style messages differently
+  -- (client vs transcriber vs admin)
+
+  message text NOT NULL,
+  -- The actual chat message text
+
+  created_at timestamptz DEFAULT now()
+  -- When the message was sent
+);
+
+-- ============================================================
+-- Turn on Row Level Security so Supabase can control who
+-- is allowed to see and send chat messages
+-- ============================================================
+
+ALTER TABLE session_chat ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================
+-- Allow any logged-in user to:
+--   - Read chat messages
+--   - Send chat messages
+-- This works for now while building/testing.
+-- Later you can lock this down per session if needed.
+-- ============================================================
+
+CREATE POLICY "Allow authenticated chat"
+ON session_chat
+FOR ALL
+USING (auth.role() = 'authenticated');
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

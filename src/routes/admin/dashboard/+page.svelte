@@ -46,6 +46,17 @@
   // --------------------------
   let joinSessionCode = '';
 
+  function joinByCode() {
+  if (!joinSessionCode.trim()) {
+    alert('Please enter a session code');
+    return;
+  }
+
+  // TEMP: direct redirect without Supabase
+  window.location.href = `/room/${joinSessionCode}`;
+}
+
+
   // --------------------------
   // NEW USER INPUTS
   // --------------------------
@@ -115,7 +126,6 @@
       alert('Error updating role: ' + result.error);
     }
   }
-
   // Pretend the logged-in user is admin for now
   let currentUserRole: Role = 'admin';
 </script>
@@ -129,8 +139,20 @@
     <div style="margin-top:1rem;">
       <label>
         Join Session:
-        <input type="text" bind:value={joinSessionCode} placeholder="Enter session code" />
+        <input
+          type="text"
+          bind:value={joinSessionCode}
+          placeholder="Enter session code"
+        />
       </label>
+    
+      <!-- ✅ JOIN BUTTON -->
+      <button
+        style="margin-top:0.5rem;"
+        on:click={joinByCode}
+      >
+        Join Session
+      </button>
     </div>
 
     <div style="margin-top:2rem;">
