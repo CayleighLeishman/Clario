@@ -2,9 +2,10 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import "$lib/styles/dashboards.css";
+  import { goto } from '$app/navigation';
 
   // ===========================
-  // ===== Session Type
+  // Session Type
   // ===========================
   type TranscriberSession = {
     userId: string;
@@ -16,13 +17,13 @@
   $: session = $page.data.session as TranscriberSession | null;
 
   // ===========================
-  // ===== Dashboard Data Types
+  // Dashboard Data
   // ===========================
   interface Lecture {
     id: string;
     course_name: string;
     lecture_date: string;
-    host?: string; // optional host info
+    host?: string;
   }
 
   interface HistoryItem {
@@ -32,18 +33,12 @@
     raw_full_text: string;
   }
 
-  // ===========================
-  // ===== Reactive Variables
-  // ===========================
   let scheduleData: Lecture[] = [];
   let historyData: HistoryItem[] = [];
-  let joinCode = ''; // for "join another lecture"
+  let joinCode = '';
 
-  // ===========================
-  // ===== Mock Load Data
-  // ===========================
+  // Mock data for now
   function loadDashboard() {
-    // Replace with fetch from Supabase if ready
     scheduleData = [
       { id: 'lecture-1', course_name: 'Biology 101', lecture_date: 'Mon', host: 'Dr. Smith' },
       { id: 'lecture-2', course_name: 'Math 201', lecture_date: 'Tue', host: 'Prof. Jones' }
@@ -57,7 +52,7 @@
   loadDashboard();
 
   // ===========================
-  // ===== Join Lecture Functions
+  // Join lecture from schedule
   // ===========================
   async function joinLecture(lectureId: string) {
     try {
@@ -65,26 +60,41 @@
         method: 'POST',
         body: JSON.stringify({ lectureId })
       });
+
       if (!res.ok) throw new Error('Failed to join lecture');
+
       const data = await res.json();
-      window.location.href = `/room/${data.sessionId}`;
+      goto(`/room/${data.sessionId}`);
+
     } catch (err) {
-      console.error('Error joining lecture:', err);
-      alert('Could not join lecture. See console for details.');
+      console.error(err);
+      alert('Could not join lecture.');
     }
   }
 
-  async function joinAnother() {
-    if (!joinCode.trim()) return alert('Please enter a lecture code!');
-    try {
-      // This could be a lookup or POST to join a session by code
-      alert(`Attempting to join lecture with code: ${joinCode}`);
-      // TODO: replace with actual /room/join logic
-    } catch (err) {
-      console.error(err);
-      alert('Could not join lecture by code.');
-    }
+  // ===========================
+  // Join using code input
+  // ===========================
+ async function joinSession() {
+  if (!joinCode.trim()) return alert("Please enter a lecture code!");
+
+  const res = await fetch("/room/join", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ joinCode })
+  });
+
+  if (!res.ok) {
+    alert("Invalid code.");
+    return;
   }
+
+  const data = await res.json();
+  goto(`/room/${data.sessionId}`);
+}
+
+
+
 </script>
 
 <svelte:head>
@@ -95,17 +105,16 @@
   <div class="dashboard-container">
     <main class="main-content">
 
-      <!-- ===== Join Another Lecture ===== -->
+      <!-- Join by code -->
       <section class="panel join-panel">
         <h3>Join Another Lecture</h3>
         <div class="input-group">
-          <label for="join-code" class="sr-only">Lecture Code</label>
-          <input id="join-code" type="text" placeholder="Enter lecture code" bind:value={joinCode} />
-          <button on:click={joinAnother}>Join</button>
+          <input type="text" placeholder="Enter lecture code" bind:value={joinCode} />
+          <button on:click={joinSession}>Join</button>
         </div>
       </section>
 
-      <!-- ===== Schedule Panel ===== -->
+      <!-- Schedule -->
       <section class="panel schedule-panel">
         <h3>Your Scheduled Lectures</h3>
         <div class="panel-list scrollable">
@@ -122,7 +131,7 @@
         </div>
       </section>
 
-      <!-- ===== History Panel ===== -->
+      <!-- History -->
       <section class="panel history-panel">
         <h3>Completed Lectures</h3>
         <div class="panel-list scrollable">

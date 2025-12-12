@@ -1,3 +1,4 @@
+<!-- src/lib/components/settings.svelte -->
 <script lang="ts">
   import '$lib/styles/settings-popup.css';
   import { supabaseUser } from '$lib/utils/supabaseUser';
@@ -21,8 +22,8 @@
      Load the current session and user settings on mount
      ----------------------------------------------------- */
   onMount(async () => {
-    const { data: sessionData } = await supabaseUser.auth.getSession();
-    session = sessionData.session;
+    const { data: sessionData } = await supabaseUser.auth.getUser();
+    session = sessionData.user;
 
     if (!session) return;
 

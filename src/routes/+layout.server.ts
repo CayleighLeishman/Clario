@@ -1,36 +1,31 @@
 // src/routes/+layout.server.ts
-
 import { createSupabaseServer } from '$lib/utils/supabaseServer';
+import type { LayoutServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
 
-export const load = (async ({ cookies, url }) => {
-  console.log('src/routes/(public)/+layout.server.ts running...');
-
+export const load: LayoutServerLoad = async ({ cookies, url }) => {
   const supabase = createSupabaseServer(cookies);
 
-  // Get the current session
+  // Use getSession() so we don't force validate every request
   const {
     data: { session },
     error
   } = await supabase.auth.getSession();
 
-  if (error) console.error('Supabase error:', error);
+  if (error) console.error("Session error:", error);
 
-  console.log('🧩 Session data:', session);
+  const path = url.pathname;
 
-  const publicPages = ['/', '/about', '/contact', '/login', '/register'];
+  const PUBLIC = ['/', '/about', '/contact', '/login', '/register'];
+  const isPublic = PUBLIC.includes(path) || path.startsWith('/(public)');
 
-  const isPublicRoute =
-    publicPages.includes(url.pathname) || url.pathname.startsWith('/(public)');
-
-  // Redirect if not logged in
-  if (!session && !isPublicRoute) {
-    console.log(`Not logged in and tried to access ${url.pathname} — redirecting to /login`);
+  // 🚫 Not logged in → block access
+  if (!session && !isPublic) {
     throw redirect(303, '/login');
   }
 
-  // Redirect logged-in users away from login page
-  if (session && url.pathname === '/login') {
+  // 🔄 Already logged in → redirect away from login page
+  if (session && path === '/login') {
     const role = session.user.user_metadata?.role;
 
     if (role === 'client') throw redirect(303, '/client/dashboard');
@@ -39,4 +34,4 @@ export const load = (async ({ cookies, url }) => {
   }
 
   return { session };
-}) 
+};

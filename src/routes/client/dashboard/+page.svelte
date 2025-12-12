@@ -92,10 +92,21 @@
   // ===========================
   // ===== Join Session Function
   // ===========================
-  function joinSession() {
-    if (!inputCode.trim()) return alert("Please enter a session code!");
-    alert(`Attempting to join session: ${inputCode}`);
-  }
+
+async function joinSession() {
+  if (!inputCode.trim()) return alert("Please enter a session code!");
+
+  const res = await fetch("/room/join", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ joinCode: inputCode })
+  });
+
+  const data = await res.json();
+  goto(`/room/${data.sessionId}`);
+}
+
+
 </script>
 
 <svelte:head>

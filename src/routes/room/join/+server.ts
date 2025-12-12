@@ -1,53 +1,96 @@
 // src/routes/room/join/+server.ts
 import { createSupabaseServer } from '$lib/utils/supabaseServer';
-import { v4 as uuid } from 'uuid';
 import type { RequestHandler } from './$types';
+import { v4 as uuid } from 'uuid';
 
 export const POST: RequestHandler = async (event) => {
-  try {
-    const supabase = createSupabaseServer(event.cookies);
+  const supabase = createSupabaseServer(event.cookies);
 
-    // Extract lectureId from the request
-    const { lectureId } = await event.request.json();
-    console.log('Joining lectureId:', lectureId);
+  // ✅ Verified auth (required for RLS)
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return new Response('Unauthorized', { status: 401 });
 
-    // Get current user securely
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError) {
-      console.error('Error getting session:', sessionError);
-      return new Response('Unauthorized', { status: 401 });
-    }
-    if (!session) {
-      return new Response('Unauthorized', { status: 401 });
-    }
-    console.log('Session user id:', session.user.id);
+  const { lectureId, joinCode } = await event.request.json();
 
-    // Create a new active session
-    const sessionToken = uuid();
+  // --------------------------
+  // 1. Find lecture
+  // --------------------------
+  let lecture;
+
+  if (joinCode) {
     const { data, error } = await supabase
+      .from('course_lectures')
+      .select('*')
+      .eq('join_code', joinCode)
+      .single();
+
+    if (error || !data) {
+      return new Response(JSON.stringify({ error: 'Invalid join code' }), { status: 400 });
+    }
+
+    lecture = data;
+  }
+
+  if (!lecture && lectureId) {
+    const { data, error } = await supabase
+      .from('course_lectures')
+      .select('*')
+      .eq('id', lectureId)
+      .single();
+
+    if (error || !data) {
+      return new Response(JSON.stringify({ error: 'Invalid lectureId' }), { status: 400 });
+    }
+
+    lecture = data;
+  }
+
+  if (!lecture) {
+    return new Response('Missing joinCode or lectureId', { status: 400 });
+  }
+
+  // --------------------------
+  // 2. Check for existing live session
+  // --------------------------
+  const { data: existing } = await supabase
+    .from('active_sessions')
+    .select('*')
+    .eq('lecture_id', lecture.id)
+    .eq('is_live', true)
+    .maybeSingle();
+
+  let sessionId;
+
+  // --------------------------
+  // 3. Reuse OR create session
+  // --------------------------
+  if (existing) {
+    sessionId = existing.id;
+  } else {
+    const newToken = uuid();
+
+    const { data: newSession, error } = await supabase
       .from('active_sessions')
       .insert({
-        lecture_id: lectureId,
-        transcriber_id: session.user.id,
-        session_token: sessionToken,
+        lecture_id: lecture.id,
+        session_token: newToken,
         is_live: true
       })
       .select()
       .single();
 
-    if (error) {
-      console.error('Error inserting active session:', error);
-      return new Response(JSON.stringify(error), { status: 400 });
+    if (error || !newSession) {
+      console.error('Session creation failed:', error);
+      return new Response('Error creating session', { status: 500 });
     }
 
-    // Return the new session ID
-    return new Response(JSON.stringify({ sessionId: data.id }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
-
-    // To do : Change "any" to 'unknown' and properly type error for production
-  } catch (err: any) { 
-    console.error('Unexpected error joining lecture:', err);
-    return new Response('Internal Server Error', { status: 500 });
+    sessionId = newSession.id;
   }
+
+  // --------------------------
+  // 4. Return sessionId
+  // --------------------------
+  return new Response(JSON.stringify({ sessionId }), {
+    headers: { 'Content-Type': 'application/json' }
+  });
 };
