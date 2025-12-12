@@ -1,3 +1,5 @@
+// src/routes/admin/+layout.server.ts
+
 import { redirect } from '@sveltejs/kit';
 import { createSupabaseServer } from '$lib/utils/supabaseServer';
 

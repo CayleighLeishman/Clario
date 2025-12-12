@@ -1,3 +1,4 @@
+<!-- src/routes/client/dashboard/+page.svelte -->
 <script lang="ts">
 import { onMount } from "svelte"; 
 import { createSupabaseBrowser } from "$lib/utils/supabaseBrowser"; // Supabase client

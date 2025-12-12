@@ -1,127 +1,226 @@
-<!-- src/routes/room/[sessionId]/+page.svelte -->
+<!-- src.routes/room/[sessionId]/+page.svelte -->
+
 <script lang="ts">
-  import { page } from '$app/stores';
-  import { onDestroy, onMount } from 'svelte';
-  import '$lib/styles/room.css';
-  import { supabaseUser } from '$lib/utils/supabaseUser';
 
-  // Session data from root layout
-  type AppSession = {
-    userId: string;
-    role: 'client' | 'transcriber' | 'admin';
-    email: string;
-  };
+import { page } from '$app/stores';
+import { onDestroy, onMount } from 'svelte';
+import { supabaseUser } from '$lib/utils/supabaseUser';
+import { throttle } from '$lib/utils/throttle';
+import '$lib/styles/room.css';
+import StickyNotes from '$lib/components/StickyNotes.svelte';
 
-  let session: AppSession | null = null;
-  $: session = $page.data.session as AppSession | null;
 
-  // URL param
-  $: sessionId = $page.params.sessionId as string;
+/* =========================================================================
+   TYPE DEFINITIONS
+   =========================================================================
+   These describe the shape of data passed around the app.
+   Keeping them here makes the file self-documenting.
+*/
 
-  // Transcript + chat state
-  let currentInput = '';
-  let transcript: string[] = [];
-  let transcriptDisplay: HTMLDivElement | undefined;
+// Session info passed from +page.server.ts
+type AppSession = {
+  userId: string;
+  role: 'client' | 'transcriber' | 'admin';
+  email: string;
+};
 
-  let chatInput = '';
-  let chatLog: { sender: string; message: string }[] = [];
-  let chatDisplay: HTMLDivElement | undefined;
+/* =========================================================================
+   REACTIVE STATE (Svelte Variables)
+   =========================================================================
+   These variables drive the UI and update reactively.
+*/
 
-  // Keep a reference to the realtime channel
-  let transcriptChannel: ReturnType<typeof supabaseUser.channel> | null = null;
+// Session data injected by SvelteKit load()
+let session: AppSession | null = null;
+$: session = $page.data.session as AppSession | null;
 
-  // Load existing transcript + subscribe to new chunks
-  onMount(async () => {
-    if (!sessionId) return;
+// IDs
+// lectureId → permanent (used for notes & history)
+// sessionId → temporary (used for realtime typing + chat)
+$: lectureId = $page.data.lectureId as string;
+$: sessionId = $page.params.sessionId as string;
 
-    // 1️. Load existing transcript rows
-    const { data, error } = await supabaseUser
-      .from('realtime_chunks')
-      .select('id, text_chunk, created_at')
-      .eq('session_id', sessionId)
-      .order('created_at', { ascending: true });
+/* =========================================================================
+   TRANSCRIPT STATE
+   =========================================================================
+   Handles live transcription display and realtime updates.
+*/
 
-    if (error) {
-      console.error('Error loading transcript:', error);
-    } else if (data) {
-      transcript = data.map((row) => row.text_chunk as string);
-      scrollTranscriptToBottom();
-    }
+let currentInput = '';                 // What the transcriber is currently typing
+let transcript: string[] = [];         // Final lines + live updating line
+let transcriptDisplay: HTMLDivElement | undefined;
 
-    // 2️. Subscribe to realtime INSERTS for this session
-    transcriptChannel = supabaseUser
-      .channel(`room:${sessionId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'realtime_chunks',
-          filter: `session_id=eq.${sessionId}`
-        },
-        (payload) => {
-          const newText = (payload.new as any).text_chunk as string;
-          transcript = [...transcript, newText];
-          scrollTranscriptToBottom();
+// Supabase realtime channel (cleaned up on destroy)
+let transcriptChannel: ReturnType<typeof supabaseUser.channel> | null = null;
+
+/* =========================================================================
+   CHAT STATE (Local placeholder)
+   =========================================================================
+   Chat is not realtime yet — stored locally for now.
+*/
+
+let chatInput = '';
+let chatLog: { sender: string; message: string }[] = [];
+let chatDisplay: HTMLDivElement | undefined;
+
+/* =========================================================================
+   LIFECYCLE: onMount
+   =========================================================================
+   - Load existing transcript history
+   - Subscribe to realtime transcript updates
+*/
+
+onMount(async () => {
+  if (!lectureId) return;
+
+  /* --------------------------
+     1. LOAD TRANSCRIPT HISTORY
+     --------------------------
+     Loads previously typed chunks for this session.
+  */
+  const { data, error } = await supabaseUser
+    .from('realtime_chunks')
+    .select('id, text_chunk, created_at')
+    .eq('session_id', sessionId)
+    .order('created_at', { ascending: true });
+
+  if (!error && data) {
+    transcript = data.map(row => row.text_chunk as string);
+    scrollTranscriptToTop();
+  }
+
+  /* --------------------------
+     2. REALTIME SUBSCRIPTION
+     --------------------------
+     Listens for INSERTS to realtime_chunks and updates UI.
+  */
+  transcriptChannel = supabaseUser
+    .channel(`room:${sessionId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'realtime_chunks',
+        filter: `session_id=eq.${sessionId}`
+      },
+      (payload) => {
+        const newText = (payload.new as any).text_chunk as string;
+
+        // |EOL| marks finalized lines (ENTER key)
+        const isFinalLine = newText.endsWith('|EOL|');
+        const chunkText = newText.replace('|EOL|', '').trim();
+
+        if (isFinalLine) {
+          // Finalize previous line and start new placeholder
+          transcript[transcript.length - 1] = chunkText;
+          transcript = [...transcript, ''];
+        } else if (
+          transcript.length === 0 ||
+          !transcript[transcript.length - 1].trim()
+        ) {
+          // First live chunk
+          transcript = [...transcript, chunkText];
+        } else {
+          // Replace last line (live typing effect)
+          transcript[transcript.length - 1] = chunkText;
         }
-      )
-      .subscribe((status) => {
-        console.log('Realtime status:', status);
-      });
+
+        transcript = transcript; // force reactivity
+        scrollTranscriptToBottom();
+      }
+    )
+    .subscribe();
+});
+
+
+/* =========================================================================
+   CLEANUP
+   =========================================================================
+   Always remove realtime channels to avoid memory leaks.
+*/
+
+onDestroy(() => {
+  if (transcriptChannel) {
+    supabaseUser.removeChannel(transcriptChannel);
+    transcriptChannel = null;
+  }
+});
+
+/* =========================================================================
+   SCROLL HELPERS
+   =========================================================================
+*/
+
+function scrollTranscriptToBottom() {
+  requestAnimationFrame(() => {
+    transcriptDisplay &&
+      (transcriptDisplay.scrollTop = transcriptDisplay.scrollHeight);
+  });
+}
+
+function scrollTranscriptToTop() {
+  requestAnimationFrame(() => {
+    transcriptDisplay && (transcriptDisplay.scrollTop = 0);
+  });
+}
+
+/* =========================================================================
+   TRANSCRIPTION LOGIC (Transcriber/Admin)
+   =========================================================================
+*/
+
+// Sends partial text (does NOT clear input)
+async function submitTranscriptChunk() {
+  if (!currentInput.trim() || !session) return;
+
+  await fetch(`/room/${sessionId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: currentInput })
+  });
+}
+
+// Throttled live updates (smooth + low DB load)
+const throttledChunkSubmission = throttle(submitTranscriptChunk, 300);
+
+// Sends final line + clears input
+async function submitFinalTranscriptLine() {
+  if (!currentInput.trim() || !session) return;
+
+  await fetch(`/room/${sessionId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: currentInput + ' |EOL|' })
   });
 
-  onDestroy(() => {
-    if (transcriptChannel) {
-      supabaseUser.removeChannel(transcriptChannel);
-      transcriptChannel = null;
-    }
+  currentInput = '';
+}
+
+/* =========================================================================
+   CHAT LOGIC (LOCAL ONLY)
+   =========================================================================
+*/
+
+function sendMessage() {
+  if (!chatInput.trim() || !session) return;
+
+  chatLog = [...chatLog, { sender: session.role, message: chatInput }];
+  chatInput = '';
+
+  requestAnimationFrame(() => {
+    chatDisplay &&
+      (chatDisplay.scrollTop = chatDisplay.scrollHeight);
   });
+}
 
-  function scrollTranscriptToBottom() {
-    requestAnimationFrame(() => {
-      if (transcriptDisplay) {
-        transcriptDisplay.scrollTop = transcriptDisplay.scrollHeight;
-      }
-    });
-  }
-
-  // Submit new transcript line (admin/transcriber only)
-  async function submitTranscriptLine() {
-    if (!currentInput.trim() || !session) return;
-
-    const text = currentInput;
-    currentInput = '';
-
-    const res = await fetch(`/room/${sessionId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text })
-    });
-
-    if (!res.ok) {
-      console.error('Failed to post transcript line:', await res.text());
-      // Optionally add it back if you want “optimistic” UI
-    }
-  }
-
-  // Chat: still local for tonight (not in Supabase yet)
-  function sendMessage() {
-    if (!chatInput.trim() || !session) return;
-
-    chatLog = [...chatLog, { sender: session.role, message: chatInput }];
-    chatInput = '';
-
-    requestAnimationFrame(() => {
-      if (chatDisplay) {
-        chatDisplay.scrollTop = chatDisplay.scrollHeight;
-      }
-    });
-  }
 </script>
+
 
 <svelte:head>
   <title>Live Transcription Room</title>
 </svelte:head>
+
 
 {#if session}
   <div class="room-container">
@@ -144,21 +243,36 @@
 
         {#if session.role !== 'client'}
           <div class="transcript-input-area">
+            <label for="transcript-input" class="sr-only">
+  Live transcription input
+</label>
             <textarea
-              bind:value={currentInput}
-              placeholder="Type the live transcription here..."
-              on:keydown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  submitTranscriptLine();
-                }
-              }}
-            ></textarea>
+  bind:value={currentInput}
+  placeholder="Type the live transcription here..."
+  on:input={throttledChunkSubmission}
+  on:keydown={(e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      submitFinalTranscriptLine();
+    }
+  }}
+></textarea>
 
-            <button on:click={submitTranscriptLine}>Add Line</button>
+<button on:click={submitFinalTranscriptLine}>
+  Add Line
+</button>
+
+
           </div>
         {/if}
       </section>
+
+      {#if session && session.role === 'client'}
+<StickyNotes
+lectureId={lectureId}
+userId={session.userId}
+/>
+{/if}
 
       <!-- WebRTC placeholder -->
       <section class="webrtc-panel">

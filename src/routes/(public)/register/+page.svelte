@@ -1,7 +1,7 @@
-<!-- src/routes/(public)/register/+page.svelte -->
 <script lang="ts">
   import { supabaseUser } from '$lib/utils/supabaseUser';
   import { goto } from '$app/navigation';
+  // NOTE: Assuming you have imported your required CSS files here.
 
   let full_name = '';
   let email = '';
@@ -22,12 +22,16 @@
     }
 
     try {
-      // 1) Create Supabase user with role in user_metadata
+      // 1) Create Supabase user in the secure auth.users table.
+      // This is the ONLY required client-side database interaction for signup.
       const { data: authData, error: authError } = await supabaseUser.auth.signUp({
         email,
         password,
         options: {
-          data: { role }
+          data: { 
+              role,
+              full_name // Pass full_name to the database trigger via metadata
+          }
         }
       });
 
@@ -41,24 +45,10 @@
         return;
       }
 
-      // 2) Insert profile in the profiles table
-      const { error: profileError } = await supabaseUser
-        .from('profiles')
-        .insert({
-          id: authData.user.id,
-          full_name,
-          orefered_name: full_name,
-          role,
-          is_admin: false,
-          bio: ''
-        });
-
-      if (profileError) {
-        errorMessage = 'Account created, but profile failed to save.';
-        console.error(profileError);
-        return;
-      }
-
+      // 🛑 STEP 2 (Manual profile insert) HAS BEEN REMOVED.
+      // The PostgreSQL trigger (handle_new_user) now automatically inserts the 
+      // profile row into the public.profiles table right after the user is created above.
+      
       // 3) Success
       successMessage = 'Account created! You can now log in.';
       setTimeout(() => goto('/login'), 2000);
@@ -69,6 +59,7 @@
     }
   }
 </script>
+
 
 <div class="signup-container">
   <h1>Create a Clario Account</h1>
@@ -119,3 +110,4 @@
     <a class="btn" href="/login">Log in</a>
   </p>
 </div>
+

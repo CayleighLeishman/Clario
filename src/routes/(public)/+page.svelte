@@ -1,4 +1,5 @@
 <!-- This page is the home page for logged out Users -->
+ <!-- src/routes/(public)/+page.svelte -->
 <script lang="ts">
   import '$lib/styles/public.css';
 

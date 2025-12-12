@@ -1,64 +1,89 @@
-//src/routes/room/[sessionId]/+page.server.ts
-// ========================= 
-// PAGE SERVER: Load Room Info
-// ========================= 
-// This file validates the authenticated user before entering a room.
-// Uses getUser() to ensure a VERIFIED session (required for RLS).
+// src/routes/room/[sessionId]/+page.server.ts
 
 import { createSupabaseServer } from '$lib/utils/supabaseServer';
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
 
+/* =========================================================================
+   ROLE-BASED REDIRECT
+   =========================================================================
+   Sends users back to their correct "home" dashboard.
+*/
+
+function redirectToHome(role: 'client' | 'transcriber' | 'admin') {
+  if (role === 'client') throw redirect(303, '/client/dashboard');
+  if (role === 'transcriber') throw redirect(303, '/transcriber/dashboard');
+  if (role === 'admin') throw redirect(303, '/admin/dashboard');
+
+  throw redirect(303, '/login');
+}
+
+
 export const load: PageServerLoad = async (event) => {
-  // --------------------------
-  // GET SESSION ID
-  // --------------------------
   const { sessionId } = event.params;
 
-  // --------------------------
-  // CREATE SUPABASE CLIENT
-  // --------------------------
+  // Create Supabase client (server-side)
   const supabase = createSupabaseServer(event.cookies);
 
-  // --------------------------
-  // SECURE USER FETCH (REQUIRED)
-  // --------------------------
+  // ---------------------------------
+  // AUTH: VERIFIED USER (RLS REQUIRED)
+  // ---------------------------------
   const {
     data: { user },
     error
   } = await supabase.auth.getUser();
 
   if (error) {
-    console.error("getUser() Error:", error);
+    console.error('getUser error:', error);
   }
 
-  // If user is NOT authenticated → redirect
-  if (!user) throw redirect(303, "/login");
+  if (!user) throw redirect(303, '/login');
 
-  // --------------------------
-  // FETCH USER PROFILE (RLS SAFE)
-  // --------------------------
+  // ---------------------------------
+  // FETCH USER PROFILE (ROLE)
+  // ---------------------------------
   const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("role, full_name")
-    .eq("id", user.id)
+    .from('profiles')
+    .select('role, full_name')
+    .eq('id', user.id)
     .single();
 
   if (profileError) {
-    console.error("Profile error:", profileError);
+    console.error('Profile error:', profileError);
   }
 
-  if (!profile) throw redirect(303, "/login");
+  if (!profile) throw redirect(303, '/login');
 
-  // --------------------------
-  // RETURN DATA TO PAGE
-  // --------------------------
+  // ---------------------------------
+  // FETCH LECTURE ID (EXAMPLE)
+  // ---------------------------------
+ // ---------------------------------
+// FETCH LECTURE ID (CORRECT TABLE)
+// ---------------------------------
+const { data: activeSession, error: sessionError } = await supabase
+  .from('active_sessions')
+  .select('lecture_id')
+  .eq('id', sessionId)
+  .single();
+
+if (sessionError) {
+  console.error('Active session error:', sessionError);
+}
+
+if (!activeSession) {
+  redirectToHome(profile.role);
+}
+
+  // ---------------------------------
+  // RETURN SAFE DATA TO CLIENT
+  // ---------------------------------
   return {
     sessionId,
-    user: {
-      id: user.id,
+    lectureId: activeSession!.lecture_id,
+    session: {
+      userId: user.id,
       role: profile.role,
-      name: profile.full_name
+      email: user.email
     }
   };
 };

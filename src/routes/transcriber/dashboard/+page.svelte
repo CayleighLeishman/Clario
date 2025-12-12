@@ -64,7 +64,9 @@
       if (!res.ok) throw new Error('Failed to join lecture');
 
       const data = await res.json();
-      goto(`/room/${data.sessionId}`);
+      // goto(`/room/${data.sessionId}`);
+      window.location.href = `/room/${data.sessionId}`;
+
 
     } catch (err) {
       console.error(err);
