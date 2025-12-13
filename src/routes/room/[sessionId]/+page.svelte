@@ -1,5 +1,3 @@
-<!-- src/routes/room/[sessionId]/+page.svelte -->
-
 <script lang="ts">
   /* ============================================================
      IMPORTS
@@ -120,11 +118,10 @@
             transcript[transcript.length - 1] = cleanText;
           }
 
-          // Auto-scroll transcript as new text arrives
+          // Always scroll DOWN (vertical only)
           requestAnimationFrame(() => {
             transcriptDisplay?.scrollTo({
-              top: transcriptDisplay.scrollHeight,
-              behavior: 'smooth'
+              top: transcriptDisplay.scrollHeight
             });
           });
         }
@@ -168,7 +165,6 @@
       body: JSON.stringify({ text: currentInput + ' |EOL|' })
     });
 
-    // Clear input after finalizing line
     currentInput = '';
   }
 </script>
@@ -184,22 +180,26 @@
       <span>{session.role}</span>
     </header>
 
+    <!-- ======================================================
+         MAIN GRID
+         ====================================================== -->
     <div class="room-grid">
       <!-- ================= TRANSCRIPT PANEL ================= -->
       <section class="transcription-panel">
         <h3>Live Transcript</h3>
 
-        <!-- Scrollable transcript text -->
-        <div class="transcript-display" bind:this={transcriptDisplay}>
+        <!--
+          This div ONLY handles transcript text.
+          Vertical scrolling lives here.
+        -->
+        <div
+          class="transcript-display"
+          bind:this={transcriptDisplay}
+        >
           {#each transcript as line}
             <p>{line}</p>
           {/each}
         </div>
-
-        <!-- Client-only private notes (always under transcript) -->
-        {#if session.role === 'client'}
-          <StickyNotes {lectureId} userId={session.userId} />
-        {/if}
 
         <!-- Transcriber/Admin input -->
         {#if session.role !== 'client'}
@@ -216,15 +216,37 @@
               }}
             ></textarea>
 
-            <button on:click={submitFinalLine}>Add Line</button>
+            <button on:click={submitFinalLine}>
+              Add Line
+            </button>
           </div>
         {/if}
       </section>
 
+      <!-- ================= CLIENT PRIVATE NOTES ================= -->
+      {#if session.role === 'client'}
+        <!--
+          Sticky notes are NOT inside the transcript panel.
+          This allows:
+          - vertical growth
+          - footer to move down
+          - clean separation of concerns
+        -->
+        <section class="sticky-notes-panel">
+          <h3>Private Notes</h3>
+          <StickyNotes
+            lectureId={lectureId}
+            userId={session.userId}
+          />
+        </section>
+      {/if}
+
       <!-- ================= WEBRTC PANEL ================= -->
       <section class="webrtc-panel">
         <h3>Audio / Video</h3>
-        <div class="video-placeholder">🎧 Stream appears here</div>
+        <div class="video-placeholder">
+          🎧 Stream appears here
+        </div>
       </section>
 
       <!-- ================= CHAT PANEL ================= -->

@@ -35,7 +35,7 @@
   flex-grow: 1;
   display: grid;
   grid-template-columns: 2fr 1fr;
-  grid-template-rows: 1fr 1fr;
+  grid-template-rows: min-content;
   gap: var(--gap);
 }
 
@@ -74,6 +74,7 @@
   margin-top: 10px;
   padding-right: 10px;
   overflow-y: auto;
+  overflow-x: hidden;  /* This supposedly stops the sideways scroll */
   border-bottom: 1px solid var(--color-border);
 }
 
