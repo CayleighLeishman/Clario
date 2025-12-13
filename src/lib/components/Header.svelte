@@ -15,9 +15,6 @@
 
     import '$lib/styles/public.css';
 
-    // DO NOT import Settings here statically. We will load it later dynamically
-
-
     // === STATE MANAGEMENT ===
     // This holds the reference to the Settings component once it's loaded in the browser.
     let Settings: any; 
@@ -65,7 +62,7 @@
 
     <!-- Center of header: Platform name-->
     <h1 class="title">Clario</h1>
-     <p >ROLE: {session?.user?.user_metadata?.role}</p>
+     <!-- <p >ROLE: {session?.user?.user_metadata?.role}</p> -->
 
     <!-- Right of Header: Role-based navigation links and utilities -->
     <nav class="nav-links">

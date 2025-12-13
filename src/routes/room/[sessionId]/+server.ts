@@ -4,49 +4,94 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 /* =========================================================================
- * POST Handler
- * -------------------------------------------------------------------------
- * Handles POST requests from the client (transcriber input) and inserts 
- * the text chunk into the 'realtime_chunks' table.
- * =========================================================================
- */
+   POST: Receive live transcription text from a transcriber
+   -------------------------------------------------------------------------
+   This endpoint is hit while the transcriber is typing (debounced)
+   and when they submit a final line (Enter key).
+
+   All this does:
+   - take the text
+   - save it to the database
+   - Supabase Realtime handles the rest
+   ========================================================================= */
+
+
 export const POST: RequestHandler = async ({ request, locals, params }) => {
-    // 1. Authentication and Authorization Check
-    // Destructure the Supabase client and the pre-verified 'user' object from locals.
-    const { supabase, user } = locals; 
 
-    // The 'user' object is defined by your app.d.ts. If it's null, the user is not authenticated.
-    if (!user) {
-        return json({ success: false, message: 'Unauthorized' }, { status: 401 });
-    }
+  console.log('🔥 POST /room/[sessionId] HIT');
+  console.log('➡️ sessionId:', params.sessionId);
 
-    // 2. Extract Data
-    // The request body contains the 'text' chunk from the transcriber
-    const { text } = await request.json();
+  /* -----------------------------------------------------------------------
+     1. Make sure we actually have a Supabase client
+     -----------------------------------------------------------------------
+     This should always exist if hooks.server.ts ran correctly.
+     If it doesn't, we fail fast instead of crashing later.
+  ----------------------------------------------------------------------- */
+  const supabase = locals.supabase;
 
-    if (!text) {
-        return json({ success: false, message: 'Missing text chunk' }, { status: 400 });
-    }
+  if (!supabase) {
+    console.error('Supabase client missing in locals');
+    return json(
+      { success: false, message: 'Server auth not initialized' },
+      { status: 500 }
+    );
+  }
 
-    // Use the dynamic sessionId from the URL path
-    const sessionId = params.sessionId;
+  /* -----------------------------------------------------------------------
+     2. Read the text sent from the client
+     -----------------------------------------------------------------------
+     Expected body:
+     {
+       text: "some transcription text"
+     }
+  ----------------------------------------------------------------------- */
+  const { text } = await request.json();
 
-    // 3. Database Insertion
-    // Insert the text chunk into the 'realtime_chunks' table
-    const { error } = await supabase.from('realtime_chunks').insert({
-        session_id: sessionId,
-        user_id: user.id, // Use the user ID from the locals object
-        text_chunk: text,
+  if (!text || !text.trim()) {
+    return json(
+      { success: false, message: 'Missing text' },
+      { status: 400 }
+    );
+  }
+
+  /* -----------------------------------------------------------------------
+     3. Get the session ID from the URL
+     -----------------------------------------------------------------------
+     Route: /room/[sessionId]
+  ----------------------------------------------------------------------- */
+  const sessionId = params.sessionId;
+    console.log('src/room/seessionId/+server.ts 🆔 SESSION ID:', sessionId);
+
+
+  /* -----------------------------------------------------------------------
+     4. Insert the text into the realtime_chunks table
+     -----------------------------------------------------------------------
+     - Every insert triggers Supabase Realtime
+     - Clients subscribed to this session update instantly
+     - "|EOL|" marks finalized lines
+  ----------------------------------------------------------------------- */
+  const { error } = await supabase
+    .from('realtime_chunks')
+    .insert({
+      session_id: sessionId,
+      text_chunk: text
     });
 
-    // 4. Response Handling
-    if (error) {
-        console.error('Supabase insert error:', error);
-        return json(
-            { success: false, message: 'Database insert failed' },
-            { status: 500 }
-        );
-    }
+  /* -----------------------------------------------------------------------
+     5. Handle database errors
+  ----------------------------------------------------------------------- */
+  if (error) {
+    console.error('Supabase insert error:', error);
+    return json(
+      { success: false, message: 'Database insert failed' },
+      { status: 500 }
+    );
+  }
 
-    return json({ success: true, message: 'Chunk inserted' });
+  /* -----------------------------------------------------------------------
+     6. Success
+     -----------------------------------------------------------------------
+     We don’t return the row — Realtime handles updates automatically.
+  ----------------------------------------------------------------------- */
+  return json({ success: true });
 };

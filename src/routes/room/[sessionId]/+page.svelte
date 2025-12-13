@@ -2,30 +2,15 @@
   /* ============================================================
      IMPORTS
      ============================================================ */
-
-  // Gives us access to page data (session, params, etc.)
   import { page } from '$app/stores';
-
-  // Lifecycle hooks
   import { onMount, onDestroy } from 'svelte';
-
-  // Supabase client scoped to the logged-in user
   import { supabaseUser } from '$lib/utils/supabaseUser';
-
-  // Utility to prevent sending a request on every keystroke
-  import { throttle } from '$lib/utils/throttle';
-
-  // Client-only private notes component
   import StickyNotes from '$lib/components/StickyNotes.svelte';
-
-  // Page-specific styles
   import '$lib/styles/room.css';
 
   /* ============================================================
      TYPES
      ============================================================ */
-
-  // Session object provided by +page.server.ts
   type AppSession = {
     userId: string;
     role: 'client' | 'transcriber' | 'admin';
@@ -35,30 +20,19 @@
   /* ============================================================
      SESSION + ROUTE DATA
      ============================================================ */
-
-  // Logged-in user session (null if not authenticated)
   let session: AppSession | null = null;
-
-  // Reactive assignment so it updates automatically
   $: session = $page.data.session as AppSession | null;
 
-  // Permanent lecture ID (used for notes + history)
   $: lectureId = $page.data.lectureId as string;
-
-  // Temporary room/session ID (used for realtime transcription)
   $: sessionId = $page.params.sessionId as string;
 
   /* ============================================================
      TRANSCRIPT STATE
      ============================================================ */
-
-  // What the transcriber is currently typing
-  let currentInput = '';
-
-  // Full transcript shown to all users
+  // Finalized lines shown to everyone (Single Source of Truth from DB)
   let transcript: string[] = [];
 
-  // Reference to transcript scroll container
+  // For scroll
   let transcriptDisplay: HTMLDivElement | null = null;
 
   // Supabase realtime channel
@@ -66,29 +40,31 @@
     | ReturnType<typeof supabaseUser.channel>
     | null = null;
 
-  /* ============================================================
-     LIFECYCLE: onMount
-     ============================================================ */
+  // Transcriber/admin input state (local to the sender)
+  let draftLine = '';
 
+  /* ============================================================
+     LOAD + REALTIME
+     ============================================================ */
   onMount(async () => {
     if (!sessionId) return;
 
-    /* ----------------------------
-       Load transcript history
-       ---------------------------- */
-    const { data } = await supabaseUser
+    // Load existing transcript (history)
+    const { data, error } = await supabaseUser
       .from('realtime_chunks')
       .select('text_chunk')
       .eq('session_id', sessionId)
-      .order('created_at');
+      .order('created_at', { ascending: true });
 
-    if (data) {
-      transcript = data.map((row) => row.text_chunk);
+    if (error) console.error('Load transcript error:', error);
+
+    if (data?.length) {
+      transcript = data
+        .map((row) => (row.text_chunk ?? '').replace('|EOL|', '').trim())
+        .filter(Boolean);
     }
 
-    /* ----------------------------
-       Subscribe to realtime inserts
-       ---------------------------- */
+    // Subscribe to realtime inserts
     transcriptChannel = supabaseUser
       .channel(`room:${sessionId}`)
       .on(
@@ -100,25 +76,26 @@
           filter: `session_id=eq.${sessionId}`
         },
         (payload: any) => {
-          const newText = payload.new.text_chunk;
+          const incoming = (payload?.new?.text_chunk ?? '')
+            .replace('|EOL|', '')
+            .trim();
 
-          // |EOL| marks a finalized transcript line
-          const isFinal = newText.endsWith('|EOL|');
-          const cleanText = newText.replace('|EOL|', '').trim();
+          if (!incoming) return;
 
-          if (isFinal) {
-            // Replace last live line, then add a new empty line
-            transcript[transcript.length - 1] = cleanText;
-            transcript = [...transcript, ''];
-          } else if (!transcript.at(-1)?.trim()) {
-            // First partial line
-            transcript = [...transcript, cleanText];
-          } else {
-            // Update the current live line
-            transcript[transcript.length - 1] = cleanText;
+          // === CRITICAL LOGIC FOR DEDUPLICATION ===
+          // We need to check if we, the sender, already applied this update locally.
+          const last = transcript[transcript.length - 1];
+          
+          // If the last line in our local transcript is already the line that just came via Realtime, ignore the push.
+          // This ensures the local update provides instant feedback, and the Realtime push for the *same* line is silently dropped.
+          if (last === incoming) {
+            console.log('Realtime push ignored (Sender already updated UI locally).');
+            return;
           }
+          
+          // This logic now only runs for **RECEIVING** clients (non-senders)
+          transcript = [...transcript, incoming];
 
-          // Always scroll DOWN (vertical only)
           requestAnimationFrame(() => {
             transcriptDisplay?.scrollTo({
               top: transcriptDisplay.scrollHeight
@@ -132,40 +109,55 @@
   /* ============================================================
      CLEANUP
      ============================================================ */
-
   onDestroy(() => {
-    // Always remove realtime subscriptions to avoid leaks
-    if (transcriptChannel) {
-      supabaseUser.removeChannel(transcriptChannel);
-    }
+    if (transcriptChannel) supabaseUser.removeChannel(transcriptChannel);
   });
 
   /* ============================================================
-     TRANSCRIPTION ACTIONS
+     SAVE FINAL LINE (DB)
      ============================================================ */
-
-  // Send partial text while typing (throttled)
-  const throttledSubmit = throttle(async () => {
-    if (!currentInput.trim()) return;
-
-    await fetch(`/room/${sessionId}`, {
+  async function submitFinalLine(text: string) {
+    console.log('Attempting to save final line:', text);
+    const res = await fetch(`/room/${sessionId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: currentInput })
-    });
-  }, 300);
-
-  // Finalize a transcript line (Enter key or button)
-  async function submitFinalLine() {
-    if (!currentInput.trim()) return;
-
-    await fetch(`/room/${sessionId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: currentInput + ' |EOL|' })
+      body: JSON.stringify({ text: text + ' |EOL|' }) // GUARANTEED |EOL| marker
     });
 
-    currentInput = '';
+    if (!res.ok) {
+      const msg = await res.text().catch(() => 'Unknown server error.');
+      console.error('❌ POST failed:', res.status, msg);
+    } else {
+      console.log('✅ POST succeeded. Realtime update should follow.');
+    }
+  }
+
+  // Handles the submission when Enter is pressed in the Textarea
+  function handleDraftKeydown(e: KeyboardEvent) {
+    if (!session || !['transcriber', 'admin'].includes(session.role)) return;
+
+    // Check for ENTER without SHIFT
+  	if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault(); // Prevent standard newline in the textarea
+
+      const line = draftLine.trim();
+      if (!line) return;
+
+      // 1. Save to DB (asynchronously)
+      submitFinalLine(line);
+      
+      // 2. CRITICAL UI FIX: Instant Local Update
+      // Apply the update locally BEFORE the network round trip finishes.
+      transcript = [...transcript, line];
+      
+      // 3. Clear the draft line and scroll
+      draftLine = '';
+      requestAnimationFrame(() => {
+        transcriptDisplay?.scrollTo({
+          top: transcriptDisplay.scrollHeight
+        });
+      });
+    }
   }
 </script>
 
@@ -180,76 +172,42 @@
       <span>{session.role}</span>
     </header>
 
-    <!-- ======================================================
-         MAIN GRID
-         ====================================================== -->
     <div class="room-grid">
-      <!-- ================= TRANSCRIPT PANEL ================= -->
-      <section class="transcription-panel">
+            <section class="transcription-panel">
         <h3>Live Transcript</h3>
 
-        <!--
-          This div ONLY handles transcript text.
-          Vertical scrolling lives here.
-        -->
-        <div
-          class="transcript-display"
-          bind:this={transcriptDisplay}
-        >
-          {#each transcript as line}
-            <p>{line}</p>
-          {/each}
+                <div class="transcript-display" bind:this={transcriptDisplay}>
+          {#if transcript.length === 0}
+            <div class="transcript-line">No transcript yet…</div>
+          {:else}
+            {#each transcript as line}
+              <div class="transcript-line">{line}</div>
+            {/each}
+          {/if}
         </div>
 
-        <!-- Transcriber/Admin input -->
-        {#if session.role !== 'client'}
-          <div class="transcript-input-area">
-            <textarea
-              bind:value={currentInput}
-              placeholder="Type transcript…"
-              on:input={throttledSubmit}
-              on:keydown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  submitFinalLine();
-                }
-              }}
-            ></textarea>
-
-            <button on:click={submitFinalLine}>
-              Add Line
-            </button>
-          </div>
+                {#if session.role !== 'client'}
+          <textarea
+            class="transcript-input"
+            bind:value={draftLine}
+            placeholder="Type a line… (Enter to send, Shift+Enter for newline)"
+            on:keydown={handleDraftKeydown}
+          ></textarea>
         {/if}
       </section>
 
-      <!-- ================= CLIENT PRIVATE NOTES ================= -->
-      {#if session.role === 'client'}
-        <!--
-          Sticky notes are NOT inside the transcript panel.
-          This allows:
-          - vertical growth
-          - footer to move down
-          - clean separation of concerns
-        -->
+            {#if session.role === 'client'}
         <section class="sticky-notes-panel">
           <h3>Private Notes</h3>
-          <StickyNotes
-            lectureId={lectureId}
-            userId={session.userId}
-          />
+          <StickyNotes lectureId={lectureId} userId={session.userId} />
         </section>
       {/if}
 
-      <!-- ================= WEBRTC PANEL ================= -->
-      <section class="webrtc-panel">
+            <section class="webrtc-panel">
         <h3>Audio / Video</h3>
-        <div class="video-placeholder">
-          🎧 Stream appears here
-        </div>
+        <div class="video-placeholder">🎧 Stream appears here</div>
       </section>
 
-      <!-- ================= CHAT PANEL ================= -->
       <section class="chat-panel">
         <h3>Chat (coming next)</h3>
       </section>
@@ -258,3 +216,4 @@
 {:else}
   <p>Not logged in.</p>
 {/if}
+

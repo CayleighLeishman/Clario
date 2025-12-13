@@ -1220,147 +1220,763 @@ USING (auth.role() = 'authenticated');
 ```
 
 
+I pushed the changes from the most recent fixings of the transcirption page and chatbox to github. Now i need to get client to be able to type "BIO101" and click join and enter the transcription room like they're supposed to. 
+
+# December 09 2025 | 
+8:48pm 
+
+December 09 2025 | Fixing Profiles RLS + Trigger Issues
+
+8:48am
+
+I thought the issue was coming from the join session link, but after confirming the routing wasn’t the cause, the real problem turned out to be deeper in Supabase:
+my Row Level Security policies were blocking the system from inserting profile rows, which broke the automatic profile creation trigger.
+
+Below is the full breakdown of the debugging process, written in the same format as my other lessons.
+
+```sql
+====================================================================
+📌 profiles — RLS + Trigger Fix
+Users should only see/update their own profile
+System trigger should be able to insert profiles
+====================================================================
+Enable RLS
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+Users can view ONLY their own profile
+CREATE POLICY "Users can view their own profile"
+ON profiles
+FOR SELECT
+USING (auth.uid() = id);
+
+Users can update ONLY their own profile
+CREATE POLICY "Users can update their profile"
+ON profiles
+FOR UPDATE
+USING (auth.uid() = id);
+
+Allow system-triggered INSERTS
+
+The trigger runs as the database, not a logged-in user — meaning auth.uid() is NULL.
+So I needed a policy that explicitly allows system inserts.
+
+CREATE POLICY "System can insert profile rows"
+ON profiles
+FOR INSERT
+WITH CHECK (true);
+
+
+Without this, Supabase silently blocks all trigger inserts.
+
+====================================================================
+📌 handle_new_user Trigger
+Automatically creates a profile when a new auth user is created
+RLS-friendly version with defaults
+====================================================================
+Final cleaned function
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO public.profiles (id, full_name, preferred_name, role, is_admin, bio)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    NULL,
+    COALESCE(NEW.raw_user_meta_data->>'role', 'client'),
+    (NEW.raw_user_meta_data->>'role' = 'admin'),
+    NULL
+  );
+  RETURN NEW;
+END;
+$$;
+
+Trigger
+CREATE TRIGGER on_auth_user_created
+AFTER INSERT ON auth.users
+FOR EACH ROW
+EXECUTE FUNCTION public.handle_new_user();
+
+====================================================================
+📌 Debugging Queries I Used
+These helped confirm nullability, trigger installation, and function errors
+====================================================================
+SELECT * FROM supabase_functions.errors ORDER BY created_at DESC LIMIT 10;
+
+SELECT column_name, is_nullable
+FROM information_schema.columns
+WHERE table_name = 'profiles';
+
+SELECT tgname
+FROM pg_trigger
+WHERE tgrelid = 'auth.users'::regclass;
+```
+
+Overall, this was a productive debugging session.
+The core issue was simple but tricky:
+
+auth.uid() = NULL inside triggers → RLS blocks inserts → profiles never auto-create
+
+Once I rebuilt the policies cleanly, everything started working again.
+
+Admin Updates:
+
+I also updated the logic so that I can properly test admin accounts.
+This will eventually allow admins to create and promote other admins.
+
+```sql
+Promote or insert an ADMIN profile
+INSERT INTO profiles (id, full_name, preferred_name, role, is_admin)
+VALUES (
+  '{actual id here}'
+  'Test Admin', 
+  'Admin',
+  'admin',
+  true
+)
+ON CONFLICT (id)
+DO UPDATE SET
+  role = 'admin',
+  is_admin = true;
+
+Promote an existing user in Supabase Auth
+UPDATE auth.users
+SET raw_user_meta_data = jsonb_set(
+  COALESCE(raw_user_meta_data, '{}'),
+  '{role}',
+  '"admin"',
+  true
+)
+WHERE id = '{actual id here}';
+
+SELECT id, email, raw_user_meta_data
+FROM auth.users
+WHERE id = '{actual id here}';
+```
+
+
+# December 10, 2025 | getting transcript page tp load properly
+
+while workign on transcript page though i found out that some of the login, especiallly after creating an account didn't seem to work properly. and thats when i checked out the rls and realized that i had a lot of doubles and inacurate policies that were causing issues. 
+
+so i deleted thos and 
+
+```sql
+--==============================
+-- 1. DROP ALL EXISTING POLICIES
+-- =============================
+-- ================
+-- DROP ALL POLICIES
+-- ================
+DO $$
+DECLARE r RECORD;
+BEGIN
+    FOR r IN 
+        SELECT schemaname, tablename, policyname 
+        FROM pg_policies 
+        WHERE schemaname = 'public'
+    LOOP
+        EXECUTE format('DROP POLICY IF EXISTS %I ON %I.%I;',
+            r.policyname, r.schemaname, r.tablename);
+    END LOOP;
+END $$;
+
+-- ==================================
+-- 🚀 2. PROFILES — CLEAN POLICIES
+-- ==================================
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+-- Admin full control
+CREATE POLICY "Admin manage profiles"
+ON profiles FOR ALL
+USING (auth.jwt()->>'role' = 'service_role')
+WITH CHECK (auth.jwt()->>'role' = 'service_role');
+
+-- Users can view their own profile
+CREATE POLICY "Users select own"
+ON profiles FOR SELECT
+USING (auth.uid() = id);
+
+-- Users can update their own profile
+CREATE POLICY "Users update own"
+ON profiles FOR UPDATE
+USING (auth.uid() = id)
+WITH CHECK (auth.uid() = id);
+
+-- Users can create their own profile
+CREATE POLICY "Users insert own"
+ON profiles FOR INSERT
+WITH CHECK (auth.uid() = id);
+
+-- System insert (backend)
+CREATE POLICY "System insert profiles"
+ON profiles FOR INSERT
+TO service_role
+WITH CHECK (true);
+
+-- =========================
+-- 🎓 3. COURSE LECTURES
+-- ===========================
+ALTER TABLE course_lectures ENABLE ROW LEVEL SECURITY;
+
+-- Admin full control
+CREATE POLICY "Admin manage lectures"
+ON course_lectures FOR ALL
+USING (auth.jwt()->>'role' = 'service_role');
+
+-- Everyone authenticated can read
+CREATE POLICY "Authenticated read lectures"
+ON course_lectures FOR SELECT
+USING (auth.role() = 'authenticated');
+
+-- ========================================
+-- 🧍‍♀️ 4. STUDENT ENROLLMENTS (Clients)
+-- ========================================
+ALTER TABLE student_enrollments ENABLE ROW LEVEL SECURITY;
+
+-- Admin full control
+CREATE POLICY "Admin manage enrollments"
+ON student_enrollments FOR ALL
+USING (auth.jwt()->>'role' = 'service_role');
+
+-- Clients read their enrollments
+CREATE POLICY "Client read own enrollments"
+ON student_enrollments FOR SELECT
+USING (auth.uid() = student_id);
+
+-- Clients insert their own enrollment
+CREATE POLICY "Client insert enrollment"
+ON student_enrollments FOR INSERT
+WITH CHECK (auth.uid() = student_id);
+
+--  ==============================================
+-- 🎤 5. ACTIVE SESSIONS (Transcriber assignment)
+-- ================================================
+ALTER TABLE active_sessions ENABLE ROW LEVEL SECURITY;
+
+-- Admin full control
+CREATE POLICY "Admin manage sessions"
+ON active_sessions FOR ALL
+USING (auth.jwt()->>'role' = 'service_role');
+
+-- Transcriber creates session row for themselves
+CREATE POLICY "Transcriber create session"
+ON active_sessions FOR INSERT
+WITH CHECK (auth.uid() = transcriber_id);
+
+-- Transcriber views their assigned sessions
+CREATE POLICY "Transcriber select session"
+ON active_sessions FOR SELECT
+USING (auth.uid() = transcriber_id);
+
+-- Transcriber updates only their own sessions
+CREATE POLICY "Transcriber update session"
+ON active_sessions FOR UPDATE
+USING (auth.uid() = transcriber_id)
+WITH CHECK (auth.uid() = transcriber_id);
+
+-- ============================================== 
+-- 📡 6. REALTIME CHUNKS (live transcription)
+-- ============================================== 
+
+-- ============================================== 
+-- 📡 6. REALTIME CHUNKS (live transcription)
+-- ============================================== 
+-- ALTER TABLE realtime_chunks ENABLE ROW LEVEL SECURITY;
+
+-- -- Admin manage chunks
+-- CREATE POLICY "Admin manage chunks"
+-- ON realtime_chunks FOR ALL
+-- USING (auth.jwt()->>'role' = 'service_role');
+
+-- -- Transcriber can insert chunks for sessions they own
+-- CREATE POLICY "Transcriber insert chunks"
+-- ON realtime_chunks FOR INSERT
+-- WITH CHECK (
+--     EXISTS (
+--         SELECT 1 
+--         FROM active_sessions s
+--         WHERE s.id = realtime_chunks.session_id
+--         AND s.transcriber_id = auth.uid()
+--     )
+-- );
+
+-- -- Transcriber can read chunks for sessions they own
+-- CREATE POLICY "Transcriber select chunks"
+-- ON realtime_chunks FOR SELECT
+-- USING (
+--     EXISTS (
+--         SELECT 1
+--         FROM active_sessions s
+--         WHERE s.id = realtime_chunks.session_id
+--         AND s.transcriber_id = auth.uid()
+--     )
+-- );
+
+-- ===============================
+-- 7. 
+-- =================================
+
+ALTER TABLE final_transcriptions ENABLE ROW LEVEL SECURITY;
+
+-- Admin full control
+CREATE POLICY "Admin manage final transcripts"
+ON final_transcriptions FOR ALL
+USING (auth.jwt()->>'role' = 'service_role');
+
+-- Client can view transcripts of lectures they are enrolled in
+CREATE POLICY "Client view transcripts"
+ON final_transcriptions FOR SELECT
+USING (
+    EXISTS (
+        SELECT 1 
+        FROM student_enrollments e
+        WHERE e.course_lecture_id = final_transcriptions.lecture_id
+        AND e.student_id = auth.uid()
+    )
+);
+
+-- Transcriber can insert transcripts for lectures they are assigned to
+CREATE POLICY "Transcriber insert transcript"
+ON final_transcriptions FOR INSERT
+WITH CHECK (
+    EXISTS (
+        SELECT 1
+        FROM active_sessions s
+        WHERE s.lecture_id = final_transcriptions.lecture_id
+        AND s.transcriber_id = auth.uid()
+    )
+);
+
+-- Transcriber can update transcripts for lectures they are assigned to
+CREATE POLICY "Transcriber update transcript"
+ON final_transcriptions FOR UPDATE
+USING (
+    EXISTS (
+        SELECT 1
+        FROM active_sessions s
+        WHERE s.lecture_id = final_transcriptions.lecture_id
+        AND s.transcriber_id = auth.uid()
+    )
+)
+WITH CHECK (
+    EXISTS (
+        SELECT 1
+        FROM active_sessions s
+        WHERE s.lecture_id = final_transcriptions.lecture_id
+        AND s.transcriber_id = auth.uid()
+    )
+);
+
+--  ============================
+-- 💬 8. SESSION CHAT
+-- =============================ALTER TABLE session_chat ENABLE ROW LEVEL SECURITY;
+
+-- ============================
+-- 🔑 1. Service role full access
+-- ============================
+CREATE POLICY "Service role manage chat"
+ON session_chat FOR ALL
+USING (auth.jwt()->>'role' = 'service_role');
+
+-- ============================
+-- 💬 2. Session participants chat
+-- (Transcribers & Clients)
+-- ============================
+CREATE POLICY "Session participants chat"
+ON session_chat FOR ALL
+USING (
+    -- Transcriber assigned to this active session
+    EXISTS (
+        SELECT 1
+        FROM active_sessions s
+        WHERE s.id = session_chat.session_id
+        AND s.transcriber_id = auth.uid()
+    )
+    OR
+    -- Client enrolled in the lecture associated with this session
+    EXISTS (
+        SELECT 1
+        FROM active_sessions s
+        JOIN student_enrollments e
+          ON e.course_lecture_id = s.lecture_id
+        WHERE s.id = session_chat.session_id
+        AND e.student_id = auth.uid()
+    )
+);
+
+
+```
+
+with these cleaned up policies, I was able to get the login 
+Today was a long debugging session, but I learned so much about how Supabase authentication and SvelteKit really work under the hood.
+Here is everything I ran into, what caused it, and what finally fixed it — written like a dev journal entry.
+
+1️⃣ The “Profile Failed to Save” Mystery
+
+One of the first problems today was that new users were created in Supabase Auth, but their profile row in the profiles table wasn’t saving. Some rows literally had id = null, which makes no sense because Supabase should always give us a UUID.
+
+What I learned
+
+The issue wasn’t the signup code — it was RLS.
+
+Supabase blocks inserts unless explicit policies allow them.
+
+My app needed two policies:
+
+One allowing normal users to insert their own profile
+
+One allowing the service_role to insert profiles server-side
+
+How I fixed it
+CREATE POLICY "Users insert own profile"
+ON profiles FOR INSERT
+WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "System insert profiles"
+ON profiles FOR INSERT TO service_role
+WITH CHECK (true);
+
+
+Also made sure the signup insert looked like:
+
+await supabase.from("profiles").insert({
+  id: user.id,
+  role
+});
+
+2️⃣ The Infinite Login Refresh Loop
+
+At one point the app kept refreshing forever.
+Login → refresh → login → refresh → login…
+
+What I learned
+
+This was caused by +layout.server.ts repeatedly calling authentication functions.
+
+The browser cookie wasn’t being recognized on refresh.
+
+Because of the loop, Supabase kept warning me:
+“Using the user object from getSession() may be insecure.”
+
+Basically:
+I was fetching the session in the wrong place.
+
+How I fixed it
+
+Authentication should happen only in hooks.server.ts.
+
++layout.server.ts should simply read locals.session, not fetch anything.
+
+3️⃣ Cookie Persistence Problems
+
+Another big discovery:
+
+The reason users were logging out on navigation was because the cookies were not being serialized with the right settings.
+
+What I learned
+
+A working cookie in SvelteKit + Supabase needs:
+
+{
+  httpOnly: true,
+  sameSite: "lax",
+  secure: process.env.NODE_ENV === "production",
+  path: "/"
+}
 
 
+If path isn’t set, the cookie won’t exist across routes.
+If secure is wrong, the cookie won’t save in production.
+If sameSite is wrong, SSR can’t send session data.
 
+4️⃣ TypeScript Fighting Back
 
+VS Code was mad about everything today.
+Lots of red underlines. The main offender:
 
+“Property supabase does not exist on Locals”
 
+What I learned
 
+Every time I change how locals works, I must update app.d.ts.
 
+TypeScript wants explicit definitions.
 
+Fixed it by declaring:
 
+interface Locals {
+  supabase: ReturnType<typeof createSupabaseServer>;
+  session: {
+    userId: string;
+    role: string;
+    email: string;
+  } | null;
+}
 
 
+Once this was updated, the TypeScript errors stopped screaming at me.
 
+5️⃣ The Supabase Deletion Error
 
+Trying to delete a user threw:
 
+“Error deleting user: database constraint violation”
 
+What I learned
 
+You cannot delete an auth user if your tables still reference them.
 
+Delete order must be:
 
+Delete profile
 
+Delete any dependent rows
 
+Delete auth user
 
+6️⃣ Join Codes Not Working
 
+Clients weren’t able to join courses.
+It was an RLS issue again.
 
+Lesson learned
 
+Every table that has user interaction needs:
 
+auth.uid() = whatever_your_user_column_is
 
 
+Once I added:
 
+CREATE POLICY "Client insert enrollment"
+ON student_enrollments FOR INSERT
+WITH CHECK (auth.uid() = student_id);
 
 
+Join codes started working again.
 
+7️⃣ Realtime Transcription Visibility Problems
 
+The client couldn’t see the transcriber’s session.
+Turns out:
+RLS was blocking the client because the policy wasn’t checking the session → enrollment → user relationship correctly.
 
+What I learned
 
+Realtime visibility needs a multi-table EXISTS check.
 
+8️⃣ The supabaseServer.ts Duplicated Code Accident
 
+At one point the file had two versions of the same functions.
+That explained the weird TypeScript errors.
 
+Lesson learned
 
+When replacing a file:
+Always delete the old version first.
 
+9️⃣ Profile Creation Getting Stuck
 
+If a profile wasn’t created, it was because I accidentally used:
 
+import { supabase } from "$lib/supabaseClient";
 
 
+This is client-side, meaning RLS blocked it.
 
+Fix
 
+Always use:
 
+locals.supabase
 
 
+For server inserts.
 
+🔟 End-of-Day Reflection: What Actually Works Now
 
+After all the debugging, I confirmed:
 
+✔ Signup works
 
+✔ Login works
 
+✔ Refresh keeps user logged in
 
+✔ Cookies persist correctly
 
+✔ RLS allows correct inserts
 
+✔ Join codes work
 
+✔ Active session and profile syncing works
 
+This was a huge day of learning.
+It was overwhelming, but now the entire auth system makes much more sense.
 
 
 
+# DEC 12 2025 | Oh Crap Moment
 
+I did so much the last couple days, some problems came up so i had to pull the last thing i did from github and unfprtunatly i had to restart some things because i didn't push consistently to github as i often thought i did. Dont forget kids, if you ever work on github and finish something and nothing else has broken, **PUSH IT TO GITHUB**
 
+so here's what I did the last 24 hours
+Work Completed (Last ~25 Hours)
+Authentication & Routing
 
+Implemented centralized auth handling in +layout.server.ts
 
+Enforced route protection for authenticated vs public pages
 
+Redirected users to role-specific dashboards (client, transcriber, admin)
 
+Switched from getSession() to getUser() where verification was required
 
+Live Transcription System
 
+Built a real-time transcription page using Supabase Realtime
 
+Loaded transcript history from realtime_chunks on page mount
 
+Subscribed to postgres_changes for live transcript updates
 
+Implemented partial text updates and finalized transcript lines using |EOL|
 
+Fixed vertical scrolling so transcript grows downward (not horizontally)
 
+Ensured auto-scroll stays locked to newest transcript text
 
+Separated transcript display from input logic for cleaner UX
 
+Transcriber Input Improvements
 
+Added throttled partial transcript submission while typing
 
+Implemented finalized transcript submission on Enter
 
+Debugged issues where text appeared locally but was not persisted
 
+Identified and planned removal of the bottom textarea in favor of click-to-type transcript editing
 
+Client Private Sticky Notes
 
+Created StickyNotes.svelte as a reusable component
 
+Scoped notes to:
 
+authenticated user
 
+specific lecture
 
+Implemented:
 
+note creation
 
+autosave with debounce
 
+delete functionality
 
+Fixed TypeScript event typing issues
 
+Ensured notes scroll independently and don’t break page layout
 
+Moved sticky notes out of the transcript panel to prevent layout conflicts
 
+Confirmed notes persist to Supabase under RLS
 
+Layout & UI Structure
 
+Reworked page layout to allow vertical growth instead of forcing 100vh
 
+Fixed footer overlap issues by allowing natural document height
 
+Separated concerns between:
 
+transcript content
 
+private notes
 
+WebRTC panel
 
+chat panel
 
+Prevented horizontal scrolling across transcript and notes
 
+Added visual boundaries around typing areas for clarity
 
+User Settings System
 
+Designed and created user_settings table with:
 
+theme
 
+text color
 
+background color
 
+text size
 
+notifications
 
+Enabled Row Level Security (RLS) with per-user access policies
 
+Created trigger to auto-create default settings on user signup
 
+Verified existing trigger instead of duplicating it
 
+Built a settings UI component for editing preferences
 
+Loaded user settings globally in +layout.server.ts
 
+Applied user settings to CSS variables at runtime
 
+Connected Supabase settings → live UI changes (text size, color, background)
 
+Accessibility & UX
 
+Used CSS variables to support dynamic text sizing
 
+Ensured transcript text respects user color and size preferences
 
+Preserved keyboard accessibility throughout forms and modals
 
+Planned color-block selectors with optional RGB input for accessibility
 
+Improved visual hierarchy and readability of transcript content
 
+Debugging & Stability
 
+Fixed duplicate <script> tag errors in Svelte files
 
+Resolved TypeScript errors related to EventTarget and any inference
 
+Debugged Supabase warnings related to session vs user verification
 
+Confirmed Supabase inserts and updates through logging and database checks
 
+Cleaned up layout logic that caused components to overlap or misbehave
 
+Architecture Decisions
 
+Centralized settings logic instead of per-page duplication
 
+Kept settings globally available while allowing per-role UI differences
 
+Chose Supabase RLS over client-side filtering for security
 
 
+I probably will not get all this done but i sent my srs to chatgbt  and here is the list it gave me of what i have done or not. 
 
 
 
+....
 
+“The issue seems to  be a database constraint.
+The realtime transcript table required a sequence number, but the server was relying on the database to generate it. Once I updated the schema to auto-generate sequence values, realtime inserts worked correctly for both transcribers and clients.”
 
-
-
-
+----
+nevermind. still having problems 

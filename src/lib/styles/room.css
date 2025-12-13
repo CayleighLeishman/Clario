@@ -81,9 +81,19 @@
 .transcript-display p {
   margin: 0 0 8px 0;
   line-height: 1.4;
-  color: var(--color-text);
+  color: var(--color-text); 
+  flex-grow: 1;
+    overflow-y: auto;
+    overflow-x: hidden; /* prevents horizontal scrolling */
+    white-space: pre-wrap;
+    word-break: break-word;
+    padding: 0.5rem;
 }
 
+.transcript-line {
+  margin-bottom: 0.5rem;
+  border-color: var(--color-border);
+}
 .transcript-input-area {
   display: flex;
   margin-top: var(--gap);
@@ -115,6 +125,8 @@
 .transcription-panel button:hover {
   background-color: var(--color-primary-hover);
 }
+
+
 
 /* --- WEBRTC STYLES --- */
 .video-placeholder {

@@ -6,13 +6,15 @@ import { redirect } from '@sveltejs/kit';
 export const load: LayoutServerLoad = async ({ cookies, url }) => {
   const supabase = createSupabaseServer(cookies);
 
-  // Use getSession() so we don't force validate every request
+  /* ============================================================
+     AUTH: session (used ONLY for routing decisions)
+     ============================================================ */
   const {
     data: { session },
     error
   } = await supabase.auth.getSession();
 
-  if (error) console.error("Session error:", error);
+  if (error) console.error('Session error:', error);
 
   const path = url.pathname;
 
@@ -33,5 +35,36 @@ export const load: LayoutServerLoad = async ({ cookies, url }) => {
     if (role === 'admin') throw redirect(303, '/admin/dashboard');
   }
 
-  return { session };
+  /* ============================================================
+     AUTHENTICATED USER (verified)
+     ============================================================ */
+  let settings = null;
+
+  if (session) {
+    // ✅ This actually verifies the user with Supabase
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      /* ========================================================
+         LOAD USER SETTINGS (RLS-safe)
+         ======================================================== */
+      const { data } = await supabase
+        .from('user_settings')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      settings = data ?? null;
+    }
+  }
+
+  /* ============================================================
+     RETURN DATA TO ALL PAGES
+     ============================================================ */
+  return {
+    session,
+    settings
+  };
 };
