@@ -2,207 +2,176 @@
 
 <script lang="ts">
   /* ============================================================
-     StickyNotes.svelte
-     ------------------------------------------------------------
-     Client-only sticky notes for Clario transcript rooms.
-
-     - Private per client (RLS enforced)
-     - Multiple notes per lecture
-     - Autosave with debounce
-     - Delete support
-     - Accessible (labels, aria-live)
+     IMPORTS
      ============================================================ */
 
   import { onDestroy } from 'svelte';
   import { supabaseUser } from '$lib/utils/supabaseUser';
 
-  /* ------------------------------------------------------------
-     PROPS (passed in from +page.svelte)
-     ------------------------------------------------------------ */
-  export let lectureId: string; // permanent lecture ID
-  export let userId: string;    // authenticated client user ID
+  /* ============================================================
+     PROPS
+     ============================================================ */
 
-  /* ------------------------------------------------------------
-     TYPES
-     ------------------------------------------------------------ */
+  // Lecture the notes belong to
+  export let lectureId: string;
+
+  // Logged-in client user
+  export let userId: string;
+
+  /* ============================================================
+     TYPES + STATE
+     ============================================================ */
+
   type Note = {
     id: string;
     note_content: string;
   };
 
-  /* ------------------------------------------------------------
-     STATE
-     ------------------------------------------------------------ */
-  let notes: Note[] = [];          // all notes for this lecture
-  let draft = '';                  // new note draft
-  let status = 'Saved';            // autosave UI feedback
+  // All notes for this lecture/user
+  let notes: Note[] = [];
+
+  // Draft for a new note
+  let draft = '';
+
+  // Autosave status text
+  let status = 'Saved';
+
+  // Debounce timer for autosave
   let autosaveTimeout: number | null = null;
 
-  /* ------------------------------------------------------------
+  /* ============================================================
      LOAD NOTES
-     ------------------------------------------------------------ */
+     ============================================================ */
+
   async function loadNotes() {
-    const { data, error } = await supabaseUser
+    const { data } = await supabaseUser
       .from('sticky_notes')
       .select('id, note_content')
       .eq('lecture_id', lectureId)
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('StickyNotes load error:', error);
-      return;
-    }
-
     notes = data ?? [];
   }
 
-  /* ------------------------------------------------------------
+  /* ============================================================
      CREATE NOTE
-     ------------------------------------------------------------ */
+     ============================================================ */
+
   async function addNote() {
     if (!draft.trim()) return;
 
     status = 'Saving…';
 
-    const { error } = await supabaseUser
-      .from('sticky_notes')
-      .insert({
-        lecture_id: lectureId,
-        user_id: userId,
-        note_content: draft
-      });
-
-    if (error) {
-      console.error('StickyNotes insert error:', error);
-      return;
-    }
+    await supabaseUser.from('sticky_notes').insert({
+      lecture_id: lectureId,
+      user_id: userId,
+      note_content: draft
+    });
 
     draft = '';
     await loadNotes();
     status = 'Saved';
   }
 
-  /* ------------------------------------------------------------
-     AUTOSAVE NOTE (debounced)
-     ------------------------------------------------------------ */
+  /* ============================================================
+     AUTOSAVE (DEBOUNCED)
+     ============================================================ */
+
   function autosaveNote(id: string, value: string) {
     status = 'Saving…';
 
-    // Clear previous debounce timer
+    // Clear any existing debounce
     if (autosaveTimeout) clearTimeout(autosaveTimeout);
 
     autosaveTimeout = window.setTimeout(async () => {
-      const { error } = await supabaseUser
+      await supabaseUser
         .from('sticky_notes')
         .update({ note_content: value })
         .eq('id', id);
 
-      if (error) {
-        console.error('StickyNotes update error:', error);
-        return;
-      }
-
       status = 'Saved';
-    }, 800);
+    }, 600);
   }
 
-  /* ------------------------------------------------------------
+  /* ============================================================
      DELETE NOTE
-     ------------------------------------------------------------ */
+     ============================================================ */
+
   async function deleteNote(id: string) {
-    const { error } = await supabaseUser
-      .from('sticky_notes')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      console.error('StickyNotes delete error:', error);
-      return;
-    }
-
+    await supabaseUser.from('sticky_notes').delete().eq('id', id);
     await loadNotes();
   }
 
-  /* ------------------------------------------------------------
+  /* ============================================================
      REACTIVE LOAD
-     ------------------------------------------------------------
-     Runs when lectureId or userId becomes available.
-     This avoids onMount timing issues in SvelteKit.
-     ------------------------------------------------------------ */
+     ============================================================ */
+
+  // Load notes once lecture + user are available
   $: if (lectureId && userId) {
     loadNotes();
   }
 
-  /* ------------------------------------------------------------
+  /* ============================================================
      CLEANUP
-     ------------------------------------------------------------ */
+     ============================================================ */
+
   onDestroy(() => {
     if (autosaveTimeout) clearTimeout(autosaveTimeout);
   });
 </script>
 
-<!-- ============================================================
-     UI
-     ============================================================ -->
 <section class="sticky-notes">
-  <h3 id="sticky-title">Your Private Notes</h3>
+  <h4>Your Private Notes</h4>
 
   <!-- New note input -->
-  <label for="new-note" class="sr-only">Add a new note</label>
   <textarea
-    id="new-note"
-    placeholder="Write a note and click Add"
     bind:value={draft}
+    placeholder="Write a note…"
   ></textarea>
 
   <button on:click={addNote}>Add</button>
-
-  <!-- Autosave status (screen-reader friendly) -->
   <small aria-live="polite">{status}</small>
 
-  <!-- Existing notes -->
-  <ul aria-labelledby="sticky-title">
-    {#each notes as note (note.id)}
-      <li class="note">
-        <label class="sr-only" for={`note-${note.id}`}>
-          Edit note
-        </label>
+  <!-- Scrollable notes list -->
+  <div class="sticky-scroll">
+    <ul>
+      {#each notes as note (note.id)}
+        <li class="note">
+          <textarea
+            on:input={(e) =>
+              autosaveNote(
+                note.id,
+                (e.currentTarget as HTMLTextAreaElement).value
+              )
+            }
+          >
+            {note.note_content}
+          </textarea>
 
-        <textarea
-          id={`note-${note.id}`}
-          on:input={(e) =>
-            autosaveNote(
-              note.id,
-              (e.target as HTMLTextAreaElement).value
-            )
-          }
-        >{note.note_content}</textarea>
-
-        <button
-          on:click={() => deleteNote(note.id)}
-          aria-label="Delete note"
-        >
-          🗑
-        </button>
-      </li>
-    {/each}
-  </ul>
+          <button on:click={() => deleteNote(note.id)}>🗑</button>
+        </li>
+      {/each}
+    </ul>
+  </div>
 </section>
 
-<!-- ============================================================
-     STYLES
-     ============================================================ -->
 <style>
   .sticky-notes {
-    background: #fffbe6;
+    margin-top: 1rem;
     padding: 1rem;
+    background: #fffbe6;
     border-radius: 0.75rem;
+  }
+
+  .sticky-scroll {
+    max-height: 250px;
+    overflow-y: auto;
   }
 
   textarea {
     width: 100%;
-    min-height: 80px;
+    min-height: 70px;
     margin-bottom: 0.5rem;
   }
 

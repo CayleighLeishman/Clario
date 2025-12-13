@@ -1,316 +1,238 @@
-<!-- src.routes/room/[sessionId]/+page.svelte -->
+<!-- src/routes/room/[sessionId]/+page.svelte -->
 
 <script lang="ts">
+  /* ============================================================
+     IMPORTS
+     ============================================================ */
 
-import { page } from '$app/stores';
-import { onDestroy, onMount } from 'svelte';
-import { supabaseUser } from '$lib/utils/supabaseUser';
-import { throttle } from '$lib/utils/throttle';
-import '$lib/styles/room.css';
-import StickyNotes from '$lib/components/StickyNotes.svelte';
+  // Gives us access to page data (session, params, etc.)
+  import { page } from '$app/stores';
 
+  // Lifecycle hooks
+  import { onMount, onDestroy } from 'svelte';
 
-/* =========================================================================
-   TYPE DEFINITIONS
-   =========================================================================
-   These describe the shape of data passed around the app.
-   Keeping them here makes the file self-documenting.
-*/
+  // Supabase client scoped to the logged-in user
+  import { supabaseUser } from '$lib/utils/supabaseUser';
 
-// Session info passed from +page.server.ts
-type AppSession = {
-  userId: string;
-  role: 'client' | 'transcriber' | 'admin';
-  email: string;
-};
+  // Utility to prevent sending a request on every keystroke
+  import { throttle } from '$lib/utils/throttle';
 
-/* =========================================================================
-   REACTIVE STATE (Svelte Variables)
-   =========================================================================
-   These variables drive the UI and update reactively.
-*/
+  // Client-only private notes component
+  import StickyNotes from '$lib/components/StickyNotes.svelte';
 
-// Session data injected by SvelteKit load()
-let session: AppSession | null = null;
-$: session = $page.data.session as AppSession | null;
+  // Page-specific styles
+  import '$lib/styles/room.css';
 
-// IDs
-// lectureId → permanent (used for notes & history)
-// sessionId → temporary (used for realtime typing + chat)
-$: lectureId = $page.data.lectureId as string;
-$: sessionId = $page.params.sessionId as string;
+  /* ============================================================
+     TYPES
+     ============================================================ */
 
-/* =========================================================================
-   TRANSCRIPT STATE
-   =========================================================================
-   Handles live transcription display and realtime updates.
-*/
+  // Session object provided by +page.server.ts
+  type AppSession = {
+    userId: string;
+    role: 'client' | 'transcriber' | 'admin';
+    email: string;
+  };
 
-let currentInput = '';                 // What the transcriber is currently typing
-let transcript: string[] = [];         // Final lines + live updating line
-let transcriptDisplay: HTMLDivElement | undefined;
+  /* ============================================================
+     SESSION + ROUTE DATA
+     ============================================================ */
 
-// Supabase realtime channel (cleaned up on destroy)
-let transcriptChannel: ReturnType<typeof supabaseUser.channel> | null = null;
+  // Logged-in user session (null if not authenticated)
+  let session: AppSession | null = null;
 
-/* =========================================================================
-   CHAT STATE (Local placeholder)
-   =========================================================================
-   Chat is not realtime yet — stored locally for now.
-*/
+  // Reactive assignment so it updates automatically
+  $: session = $page.data.session as AppSession | null;
 
-let chatInput = '';
-let chatLog: { sender: string; message: string }[] = [];
-let chatDisplay: HTMLDivElement | undefined;
+  // Permanent lecture ID (used for notes + history)
+  $: lectureId = $page.data.lectureId as string;
 
-/* =========================================================================
-   LIFECYCLE: onMount
-   =========================================================================
-   - Load existing transcript history
-   - Subscribe to realtime transcript updates
-*/
+  // Temporary room/session ID (used for realtime transcription)
+  $: sessionId = $page.params.sessionId as string;
 
-onMount(async () => {
-  if (!lectureId) return;
+  /* ============================================================
+     TRANSCRIPT STATE
+     ============================================================ */
 
-  /* --------------------------
-     1. LOAD TRANSCRIPT HISTORY
-     --------------------------
-     Loads previously typed chunks for this session.
-  */
-  const { data, error } = await supabaseUser
-    .from('realtime_chunks')
-    .select('id, text_chunk, created_at')
-    .eq('session_id', sessionId)
-    .order('created_at', { ascending: true });
+  // What the transcriber is currently typing
+  let currentInput = '';
 
-  if (!error && data) {
-    transcript = data.map(row => row.text_chunk as string);
-    scrollTranscriptToTop();
-  }
+  // Full transcript shown to all users
+  let transcript: string[] = [];
 
-  /* --------------------------
-     2. REALTIME SUBSCRIPTION
-     --------------------------
-     Listens for INSERTS to realtime_chunks and updates UI.
-  */
-  transcriptChannel = supabaseUser
-    .channel(`room:${sessionId}`)
-    .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'realtime_chunks',
-        filter: `session_id=eq.${sessionId}`
-      },
-      (payload) => {
-        const newText = (payload.new as any).text_chunk as string;
+  // Reference to transcript scroll container
+  let transcriptDisplay: HTMLDivElement | null = null;
 
-        // |EOL| marks finalized lines (ENTER key)
-        const isFinalLine = newText.endsWith('|EOL|');
-        const chunkText = newText.replace('|EOL|', '').trim();
+  // Supabase realtime channel
+  let transcriptChannel:
+    | ReturnType<typeof supabaseUser.channel>
+    | null = null;
 
-        if (isFinalLine) {
-          // Finalize previous line and start new placeholder
-          transcript[transcript.length - 1] = chunkText;
-          transcript = [...transcript, ''];
-        } else if (
-          transcript.length === 0 ||
-          !transcript[transcript.length - 1].trim()
-        ) {
-          // First live chunk
-          transcript = [...transcript, chunkText];
-        } else {
-          // Replace last line (live typing effect)
-          transcript[transcript.length - 1] = chunkText;
+  /* ============================================================
+     LIFECYCLE: onMount
+     ============================================================ */
+
+  onMount(async () => {
+    if (!sessionId) return;
+
+    /* ----------------------------
+       Load transcript history
+       ---------------------------- */
+    const { data } = await supabaseUser
+      .from('realtime_chunks')
+      .select('text_chunk')
+      .eq('session_id', sessionId)
+      .order('created_at');
+
+    if (data) {
+      transcript = data.map((row) => row.text_chunk);
+    }
+
+    /* ----------------------------
+       Subscribe to realtime inserts
+       ---------------------------- */
+    transcriptChannel = supabaseUser
+      .channel(`room:${sessionId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'realtime_chunks',
+          filter: `session_id=eq.${sessionId}`
+        },
+        (payload: any) => {
+          const newText = payload.new.text_chunk;
+
+          // |EOL| marks a finalized transcript line
+          const isFinal = newText.endsWith('|EOL|');
+          const cleanText = newText.replace('|EOL|', '').trim();
+
+          if (isFinal) {
+            // Replace last live line, then add a new empty line
+            transcript[transcript.length - 1] = cleanText;
+            transcript = [...transcript, ''];
+          } else if (!transcript.at(-1)?.trim()) {
+            // First partial line
+            transcript = [...transcript, cleanText];
+          } else {
+            // Update the current live line
+            transcript[transcript.length - 1] = cleanText;
+          }
+
+          // Auto-scroll transcript as new text arrives
+          requestAnimationFrame(() => {
+            transcriptDisplay?.scrollTo({
+              top: transcriptDisplay.scrollHeight,
+              behavior: 'smooth'
+            });
+          });
         }
+      )
+      .subscribe();
+  });
 
-        transcript = transcript; // force reactivity
-        scrollTranscriptToBottom();
-      }
-    )
-    .subscribe();
-});
+  /* ============================================================
+     CLEANUP
+     ============================================================ */
 
+  onDestroy(() => {
+    // Always remove realtime subscriptions to avoid leaks
+    if (transcriptChannel) {
+      supabaseUser.removeChannel(transcriptChannel);
+    }
+  });
 
-/* =========================================================================
-   CLEANUP
-   =========================================================================
-   Always remove realtime channels to avoid memory leaks.
-*/
+  /* ============================================================
+     TRANSCRIPTION ACTIONS
+     ============================================================ */
 
-onDestroy(() => {
-  if (transcriptChannel) {
-    supabaseUser.removeChannel(transcriptChannel);
-    transcriptChannel = null;
+  // Send partial text while typing (throttled)
+  const throttledSubmit = throttle(async () => {
+    if (!currentInput.trim()) return;
+
+    await fetch(`/room/${sessionId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: currentInput })
+    });
+  }, 300);
+
+  // Finalize a transcript line (Enter key or button)
+  async function submitFinalLine() {
+    if (!currentInput.trim()) return;
+
+    await fetch(`/room/${sessionId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: currentInput + ' |EOL|' })
+    });
+
+    // Clear input after finalizing line
+    currentInput = '';
   }
-});
-
-/* =========================================================================
-   SCROLL HELPERS
-   =========================================================================
-*/
-
-function scrollTranscriptToBottom() {
-  requestAnimationFrame(() => {
-    transcriptDisplay &&
-      (transcriptDisplay.scrollTop = transcriptDisplay.scrollHeight);
-  });
-}
-
-function scrollTranscriptToTop() {
-  requestAnimationFrame(() => {
-    transcriptDisplay && (transcriptDisplay.scrollTop = 0);
-  });
-}
-
-/* =========================================================================
-   TRANSCRIPTION LOGIC (Transcriber/Admin)
-   =========================================================================
-*/
-
-// Sends partial text (does NOT clear input)
-async function submitTranscriptChunk() {
-  if (!currentInput.trim() || !session) return;
-
-  await fetch(`/room/${sessionId}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: currentInput })
-  });
-}
-
-// Throttled live updates (smooth + low DB load)
-const throttledChunkSubmission = throttle(submitTranscriptChunk, 300);
-
-// Sends final line + clears input
-async function submitFinalTranscriptLine() {
-  if (!currentInput.trim() || !session) return;
-
-  await fetch(`/room/${sessionId}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: currentInput + ' |EOL|' })
-  });
-
-  currentInput = '';
-}
-
-/* =========================================================================
-   CHAT LOGIC (LOCAL ONLY)
-   =========================================================================
-*/
-
-function sendMessage() {
-  if (!chatInput.trim() || !session) return;
-
-  chatLog = [...chatLog, { sender: session.role, message: chatInput }];
-  chatInput = '';
-
-  requestAnimationFrame(() => {
-    chatDisplay &&
-      (chatDisplay.scrollTop = chatDisplay.scrollHeight);
-  });
-}
-
 </script>
 
-
 <svelte:head>
-  <title>Live Transcription Room</title>
+  <title>Live Transcription</title>
 </svelte:head>
-
 
 {#if session}
   <div class="room-container">
     <header class="room-header">
       <h2>Live Session</h2>
-      <span>Session ID: {sessionId}</span>
-      <span>Role: {session.role}</span>
+      <span>{session.role}</span>
     </header>
 
     <div class="room-grid">
-      <!-- Transcript -->
+      <!-- ================= TRANSCRIPT PANEL ================= -->
       <section class="transcription-panel">
         <h3>Live Transcript</h3>
 
+        <!-- Scrollable transcript text -->
         <div class="transcript-display" bind:this={transcriptDisplay}>
           {#each transcript as line}
             <p>{line}</p>
           {/each}
         </div>
 
+        <!-- Client-only private notes (always under transcript) -->
+        {#if session.role === 'client'}
+          <StickyNotes {lectureId} userId={session.userId} />
+        {/if}
+
+        <!-- Transcriber/Admin input -->
         {#if session.role !== 'client'}
           <div class="transcript-input-area">
-            <label for="transcript-input" class="sr-only">
-  Live transcription input
-</label>
             <textarea
-  bind:value={currentInput}
-  placeholder="Type the live transcription here..."
-  on:input={throttledChunkSubmission}
-  on:keydown={(e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      submitFinalTranscriptLine();
-    }
-  }}
-></textarea>
+              bind:value={currentInput}
+              placeholder="Type transcript…"
+              on:input={throttledSubmit}
+              on:keydown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  submitFinalLine();
+                }
+              }}
+            ></textarea>
 
-<button on:click={submitFinalTranscriptLine}>
-  Add Line
-</button>
-
-
+            <button on:click={submitFinalLine}>Add Line</button>
           </div>
         {/if}
       </section>
 
-      {#if session && session.role === 'client'}
-<StickyNotes
-lectureId={lectureId}
-userId={session.userId}
-/>
-{/if}
-
-      <!-- WebRTC placeholder -->
+      <!-- ================= WEBRTC PANEL ================= -->
       <section class="webrtc-panel">
-        <h3>Live Audio/WebRTC</h3>
-        <div class="video-placeholder">
-          🎧 Audio/Video Stream Will Appear Here
-        </div>
+        <h3>Audio / Video</h3>
+        <div class="video-placeholder">🎧 Stream appears here</div>
       </section>
 
-      <!-- Chat (local only for now) -->
+      <!-- ================= CHAT PANEL ================= -->
       <section class="chat-panel">
-        <h3>Live Chat</h3>
-
-        <div class="chat-log" bind:this={chatDisplay}>
-          {#each chatLog as msg}
-            <div class="chat-message {msg.sender}">
-              <strong>{msg.sender}:</strong> {msg.message}
-            </div>
-          {/each}
-        </div>
-
-        <div class="chat-input-area">
-          <input
-            type="text"
-            placeholder="Type a message..."
-            bind:value={chatInput}
-            on:keydown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                sendMessage();
-              }
-            }}
-          />
-          <button on:click={sendMessage}>Send</button>
-        </div>
+        <h3>Chat (coming next)</h3>
       </section>
     </div>
   </div>
 {:else}
-  <p>Not logged in. Redirecting...</p>
+  <p>Not logged in.</p>
 {/if}
