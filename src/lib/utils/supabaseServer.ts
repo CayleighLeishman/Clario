@@ -8,7 +8,6 @@ import { createServerClient } from '@supabase/ssr';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 import type { Cookies } from '@sveltejs/kit';
 import { createClient } from '@supabase/supabase-js'
-import { env } from '$env/dynamic/private';
 
 
 // This function takes SvelteKit's cookies object
@@ -44,16 +43,19 @@ export const createSupabaseServer = (cookies: Cookies) => {
 // Uses the Service Role key for privileged operations like deleting users.
 // ⚠️ Never import this into client-side code (.svelte, +page.ts, etc.)
 export const SupabaseAdmin = () => {
-  // Build-friendly: don't create the client until a request actually needs it.
-  if (!env.SUPABASE_URL) throw new Error('SUPABASE_URL is missing');
-  if (!env.SUPABASE_SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY is missing');
+  const SUPABASE_URL = process.env.SUPABASE_URL;
+  const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  return createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+  if (!SUPABASE_URL) throw new Error('SUPABASE_URL is missing');
+  if (!SERVICE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY is missing');
+
+  return createClient(SUPABASE_URL, SERVICE_KEY, {
     auth: {
       persistSession: false,
       autoRefreshToken: false
     }
   });
 };
+
 
 
