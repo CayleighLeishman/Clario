@@ -43,14 +43,17 @@ export const createSupabaseServer = (cookies: Cookies) => {
 // ADMIN CLIENT (server-only)
 // Uses the Service Role key for privileged operations like deleting users.
 // ⚠️ Never import this into client-side code (.svelte, +page.ts, etc.)
-export const supabaseAdmin = createClient(
-  env.SUPABASE_URL,
-  env.SUPABASE_SERVICE_ROLE_KEY,
-  {
+export const SupabaseAdmin = () => {
+  // Build-friendly: don't create the client until a request actually needs it.
+  if (!env.SUPABASE_URL) throw new Error('SUPABASE_URL is missing');
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY is missing');
+
+  return createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
     auth: {
       persistSession: false,
       autoRefreshToken: false
     }
-  }
-);
+  });
+};
+
 
